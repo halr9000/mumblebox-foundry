@@ -1,0 +1,32 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import vm from "node:vm";
+
+const source=readFileSync(new URL("../web/creator.js",import.meta.url),"utf8");
+const start=source.indexOf("    if (!app.mumbleboxProgressInstalled)");
+const end=source.indexOf("    function stylesheet()",start);
+const handlers=new Map();
+let op={jobId:"job",promptId:"ours"};
+let updates=0;
+const context={app:{},api:{addEventListener:(name,fn)=>handlers.set(name,fn)},
+    operation:()=>op,active:()=>({updateProgress:()=>updates++})};
+vm.runInNewContext(source.slice(start,end),context);
+const emit=(name,detail)=>handlers.get(name)?.({detail});
+emit("execution_start",{prompt_id:"ours"});
+emit("progress",{prompt_id:"ours",value:20,max:20});
+assert.equal(op.progress.value,20);
+emit("executing","33");
+assert.equal(op.progress,null,"Starting the next node must clear the previous 100% bar");
+emit("progress",{prompt_id:"ours",value:3,max:12});
+emit("executing","33");
+assert.equal(op.progress.value,3,"Repeated events for the same node must retain its progress");
+emit("execution_start",{prompt_id:"other"});
+emit("executing","34");
+emit("progress",{prompt_id:"other",value:8,max:8});
+assert.equal(op.progress.value,3,"Another prompt must not change this operation's progress");
+op=null;
+const previous=updates;
+emit("executing",null);
+emit("progress",{value:1,max:1});
+assert.equal(updates,previous,"Idle events must not change the interface");
+console.log("Progress node transitions and prompt ownership passed.");

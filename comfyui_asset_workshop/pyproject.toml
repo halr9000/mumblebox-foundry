@@ -1,0 +1,10 @@
+[project]
+name = "comfyui-asset-workshop"
+version = "0.1.0"
+description = "Visible staged image-to-game-asset workflow using native ComfyUI models and mesh nodes."
+requires-python = ">=3.10"
+# Uses dependencies already supplied by the supported ComfyUI host.
+dependencies = []
+
+[tool.comfy]
+DisplayName = "Asset Workshop"

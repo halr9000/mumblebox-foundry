@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "extension_version": "0.1.0",
+  "host_comfy_version": "0.42.1",
+  "host_comfy_commit": "63be2f9b82ad0dac88a7ceaa28a9cf3154125a18",
+  "python": "3.13.12",
+  "platform": "Windows",
+  "packages": {
+    "torch": "2.12.1+cu130",
+    "safetensors": "0.8.0",
+    "numpy": "2.5.2",
+    "Pillow": "12.3.0",
+    "psutil": "7.2.2",
+    "aiohttp": "3.14.3",
+    "huggingface-hub": "1.30.0",
+    "comfyui-frontend-package": "1.55.18",
+    "comfy-kitchen": "0.2.39"
+  },
+  "api": "Comfy v3",
+  "verification": {
+    "python_syntax": "passed",
+    "custom_node_schemas": 10,
+    "native_graph_contracts": 34,
+    "graph_errors": 0,
+    "routes_registered_in_cpu_check": 23,
+    "visible_desktop_controls": "Design / Views / Mesh / Export / Resources",
+    "view_cards": 10,
+    "live_gpu_execution": "pending after reboot",
+    "download_integrity_resume": "implemented; live transfer verification pending",
+    "cancellation_resume_cleanup": "implemented; installed behavior verification pending",
+    "glb_export": "implemented; real asset verification pending"
+  },
+  "external_integrations": "none; native ComfyUI nodes only",
+  "models_lock_sha256": "d490b5542a17f312fd61a49d0a56010df721e8c2e7e14fbb2ea59506d456f672"
+}

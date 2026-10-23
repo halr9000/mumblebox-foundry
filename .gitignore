@@ -1,0 +1,70 @@
+# Local credentials and settings
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+*.pem
+*.key
+*.pfx
+*.p12
+*credentials*.json
+*secrets*.json
+
+# Local Python and JavaScript environments
+.venv/
+venv/
+env/
+node_modules/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Model weights and downloads
+models/
+loras/
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.gguf
+*.bin
+.asset-workshop-downloads/
+.mcp-download-cache/
+
+# User data, generated assets, and runtime state
+input/
+output/
+outputs/
+exports/
+work-cache/
+AssetWorkshop/
+*.glb
+*.gltf
+*.fbx
+*.obj
+*.stl
+*.blend
+*.blend1
+*.zip
+*.7z
+*.log
+*.db
+*.db-*
+*.sqlite*
+
+# Local backups and fetched research sources
+.backups/
+comfyui_asset_workshop/docs/research/**/sources/
+
+# OS files
+Thumbs.db
+.DS_Store

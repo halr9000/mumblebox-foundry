@@ -1,0 +1,131 @@
+/* Mumblebox's embedded canvas UI. Scoped so legacy workflows/editor retain their layout. */
+.aw-single-controls {--base:#161c23;--surface:#202831;--line:#3c4957;--accent:#a7d6d9;--muted:#b5c1cd;--ink:#f1f5f8;position:relative;width:100%;height:100%;overflow:auto;container-type:inline-size;font-size:14px;line-height:1.55;scroll-padding-top:130px}
+.aw-single-controls [hidden] {display:none!important}
+.aw-single-controls .error {color:#ffc1ba}
+.aw-single-controls .job-progress {padding:14px 24px;border-bottom:1px solid var(--line);background:#1c2b30;white-space:pre-wrap}
+.aw-single-controls .viewer {height:440px}
+.aw-single-controls .brand {padding:22px 24px 18px;gap:12px;justify-content:flex-start}
+.aw-single-controls .brand-mark {width:40px;height:40px;display:grid;place-items:center;background:var(--accent);color:#15292c;font-size:23px;font-weight:750;border-radius:10px;flex:none}
+.aw-single-controls h2 {font-size:24px;line-height:1.2;letter-spacing:-.45px}
+.aw-single-controls .brand p {font-size:12px;color:var(--muted)}
+.aw-single-controls .content {padding:22px 24px 28px}
+.aw-single-controls .control-navigation {box-shadow:0 3px 8px #0003}
+.aw-single-controls .stats {padding:9px 24px;background:#11171d;gap:10px}
+.aw-single-controls .stats .unload-models {padding:6px 10px;min-height:34px;border-color:#647d84;background:#26383c;color:#d2edef}
+.aw-single-controls .tabs {gap:4px;padding:0 16px;flex-wrap:wrap}
+.aw-single-controls .tabs button {font-size:13px;min-height:44px;padding:11px 10px}
+.aw-single-controls .tabs button:nth-child(4) {margin-left:auto}
+.aw-single-controls .tabs button:last-child {margin-left:0}
+.aw-single-controls .step-heading {margin-bottom:18px}
+.aw-single-controls .step-heading p {max-width:76ch}
+.aw-single-controls h3 {font-size:17px;font-weight:650;line-height:1.4;margin:0 0 5px}
+.aw-single-controls h4 {font-size:14px;line-height:1.45;font-weight:650}
+.aw-single-controls p {max-width:78ch}
+.aw-single-controls .hint {font-size:12px;line-height:1.6;margin:8px 0 0;font-weight:400;white-space:pre-line}
+.aw-single-controls .control-panel {padding:20px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:18px;min-width:0}
+.aw-single-controls .panel-heading {margin:0 0 16px}
+.aw-single-controls .panel-heading .hint {margin-top:5px}
+.aw-single-controls .inline-heading {display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.aw-single-controls .inline-heading :is(h3,h4) {margin:0;flex:1}
+.aw-single-controls .control-grid {display:grid;gap:16px;margin:14px 0;align-items:start}
+.aw-single-controls .control-grid:first-child {margin-top:0}
+.aw-single-controls .columns-1 {grid-template-columns:1fr}
+.aw-single-controls .columns-2 {grid-template-columns:repeat(2,minmax(0,1fr))}
+.aw-single-controls .columns-3 {grid-template-columns:repeat(3,minmax(0,1fr))}
+.aw-single-controls :is(.control-grid,.starting-grid)>* {min-width:0}
+.aw-single-controls .field {gap:6px;font-size:12px;font-weight:600;min-width:0}
+.aw-single-controls .field>span {min-height:19px}
+.aw-single-controls :is(input,select,textarea) {font-size:13px;font-weight:400;min-height:40px;border-color:#657483;border-radius:6px;padding:9px 11px;width:100%;background:#121920}
+.aw-single-controls textarea {min-height:130px;line-height:1.6}
+.aw-single-controls input:disabled {opacity:.55;cursor:not-allowed}
+.aw-single-controls input[aria-invalid=true] {border-color:#e5aaa2}
+.aw-single-controls :is(button,a.download) {font-size:12px;min-height:38px;padding:8px 12px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;gap:6px;line-height:1.5;text-align:center}
+.aw-single-controls button.quiet {background:transparent}
+.aw-single-controls button.danger {color:#f2bab1;border-color:#775c59}
+.aw-single-controls button:active:not(:disabled) {background:#43515e}
+.aw-single-controls .row {gap:8px;margin-top:12px}
+.aw-single-controls .job-actions {justify-content:flex-end;margin:0}
+.aw-single-controls .starting-grid {display:grid;grid-template-columns:minmax(0,1.15fr) minmax(270px,1fr);gap:22px}
+.aw-single-controls .description-input textarea {min-height:205px}
+.aw-single-controls .description-tools {margin-top:10px}
+.aw-single-controls .reference-input {padding-left:20px;border-left:1px solid var(--line)}
+.aw-single-controls .upload-placeholder {padding:16px;margin-top:16px;border:1px dashed #657786;border-radius:7px;font-size:12px;color:var(--muted)}
+.aw-single-controls .upload-placeholder strong {color:var(--ink);font-weight:500}
+.aw-single-controls .model-summary {display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:12px;border-top:1px solid var(--line);padding-top:12px;margin-top:10px}
+.aw-single-controls .model-summary .hint {margin:0}
+.aw-single-controls a {color:var(--accent);text-underline-offset:3px}
+.aw-single-controls .help-panel {margin:0;padding:10px 12px;border-radius:6px;font-size:12px;background:#19212a}
+.aw-single-controls .help-panel summary {padding:3px 0;font-weight:500;font-size:12px}
+.aw-single-controls .model-guide-grid {grid-template-columns:1fr;gap:12px}
+.aw-single-controls .model-choice {padding:14px}
+.aw-single-controls .model-choice h4 {margin-bottom:7px;font-size:14px}
+.aw-single-controls .model-choice dl {grid-template-columns:90px minmax(0,1fr);font-size:12px;gap:6px 10px}
+.aw-single-controls .model-choice p {font-size:12px;margin-bottom:10px}
+.aw-single-controls .control-disclosure {border:1px solid var(--line);border-radius:8px;margin:14px 0;background:#1b232c}
+.aw-single-controls .control-disclosure>summary {padding:13px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--ink)}
+.aw-single-controls .disclosure-body {padding:2px 16px 16px}
+.aw-single-controls .control-panel .control-disclosure {background:#1a222b;margin-bottom:0}
+.aw-single-controls .range-control {padding:12px;border:1px solid #475665;background:#19222b;border-radius:7px;min-width:0}
+.aw-single-controls .range-title {display:flex;align-items:center;gap:8px;justify-content:space-between;font-size:12px;font-weight:600;min-height:27px}
+.aw-single-controls .range-values {display:grid;grid-template-columns:minmax(0,1fr) 74px;align-items:center;gap:10px;margin-top:9px}
+.aw-single-controls .range-values input[type=number] {min-height:34px;padding:6px 7px;text-align:right;font-variant-numeric:tabular-nums}
+.aw-single-controls input[type=range] {width:100%;min-height:32px;height:32px;padding:0;border:0;cursor:pointer;appearance:none;background:transparent;accent-color:var(--accent)}
+.aw-single-controls input[type=range]::-webkit-slider-runnable-track {height:5px;border-radius:3px;background:linear-gradient(to right,var(--accent) var(--fill,0%),#536170 var(--fill,0%))}
+.aw-single-controls input[type=range]::-webkit-slider-thumb {appearance:none;width:16px;height:16px;margin-top:-5.5px;background:#d6f0f1;border:2px solid #92c8cd;border-radius:50%;box-shadow:0 1px 3px #0008}
+.aw-single-controls .range-footer {display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;color:var(--muted);margin-top:5px}
+.aw-single-controls .control-reset {min-height:28px;font-size:11px;padding:3px 7px;background:transparent;border-color:#576674}
+.aw-single-controls .control-help {font-weight:400;flex:none}
+.aw-single-controls .control-help>summary {display:grid;place-items:center;width:26px;height:26px;border:1px solid #7d939e;border-radius:50%;font-size:12px;cursor:pointer;list-style:none;color:#cce4e6}
+.aw-single-controls .control-help>summary::-webkit-details-marker {display:none}
+.aw-single-controls .control-help[open] {flex-basis:100%}
+.aw-single-controls .range-title:has(.control-help[open]) {flex-wrap:wrap}
+.aw-single-controls .control-help[open]>summary {float:right;margin-bottom:6px}
+.aw-single-controls .control-help p {clear:both;font-size:12px;line-height:1.6;color:var(--muted);margin:10px 0 3px;white-space:normal}
+.aw-single-controls .seed-panel {margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.aw-single-controls .seed-heading {display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.aw-single-controls .seed-heading h4 {margin:0}
+.aw-single-controls .segmented {display:inline-flex;border:1px solid #536673;border-radius:7px;padding:3px;gap:3px;background:#141c23}
+.aw-single-controls .segmented button {border-color:transparent;background:transparent;min-height:32px;padding:5px 10px;color:var(--muted)}
+.aw-single-controls .segmented button.selected {background:#32494f;border-color:#7da9af;color:#e2f5f6}
+.aw-single-controls .seed-last {font-size:12px;padding-top:2px}
+.aw-single-controls .seed-last>span {display:block;color:var(--muted)}
+.aw-single-controls .seed-last>strong {font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.aw-single-controls .toggle {position:relative;display:flex;flex-direction:row;align-items:center;gap:9px;min-height:38px;font-size:12px;cursor:pointer;font-weight:500}
+.aw-single-controls .toggle input {position:absolute;left:0;top:50%;width:36px;height:26px;transform:translateY(-50%);opacity:0;margin:0;min-height:0;cursor:pointer}
+.aw-single-controls .toggle-track {position:relative;display:block;flex:none;width:36px;height:21px;border-radius:12px;background:#3f4c59;border:1px solid #80919f;pointer-events:none}
+.aw-single-controls .toggle-track:after {content:"";position:absolute;top:3px;left:3px;width:13px;height:13px;background:#d0d9e1;border-radius:50%}
+.aw-single-controls .toggle input:checked+.toggle-track {background:#82bcc1;border-color:#b0e0e3}
+.aw-single-controls .toggle input:checked+.toggle-track:after {left:18px;background:#132a2e}
+.aw-single-controls .toggle input:focus-visible+.toggle-track {outline:2px solid var(--accent);outline-offset:4px}
+.aw-single-controls .toggle input:disabled~span {opacity:.5}
+.aw-single-controls .toggle input:disabled {cursor:not-allowed}
+.aw-single-controls .lora-card {padding:16px;background:#202a34;border:1px solid var(--line);border-radius:8px;margin-top:14px}
+.aw-single-controls .action-bar {display:flex;align-items:center;gap:16px;flex-wrap:wrap;border:1px solid #607e85;background:#22353b;padding:16px;border-radius:8px;margin:18px 0}
+.aw-single-controls .action-bar .primary {min-width:160px;min-height:42px}
+.aw-single-controls .action-bar .hint {margin:0;flex:1 1 200px}
+.aw-single-controls .cards {gap:16px;margin:16px 0}
+.aw-single-controls .card {padding:16px;border-radius:8px;min-width:0}
+.aw-single-controls .card img {height:280px;border-radius:5px}
+.aw-single-controls .card h4 {margin-bottom:10px}
+.aw-single-controls .card .row {gap:7px}
+.aw-single-controls .card .row button {font-size:12px;padding:7px 9px}
+.aw-single-controls .source-cards {grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.aw-single-controls .source-card {padding:12px;background:#19212a}
+.aw-single-controls .source-card img {height:140px}
+.aw-single-controls .source-card .hint {font-size:11px}
+.aw-single-controls .review-badge {display:inline-flex;font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;border:1px solid #748b91;color:#c6e3e5;background:#23353b;margin-bottom:8px}
+.aw-single-controls .review-notes {font-size:12px;font-weight:500;margin-top:14px}
+.aw-single-controls .review-notes textarea {margin-top:0}
+.aw-single-controls .empty {min-height:130px;padding:20px;border-radius:8px;font-size:13px;text-align:left;place-items:start;align-content:center}
+.aw-single-controls .output-actions {padding:16px;border:1px solid var(--line);border-radius:8px;background:#19232c;margin:14px 0}
+.aw-single-controls .output-actions .row:first-child {margin-top:0}
+.aw-single-controls .history-actions {display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px}
+.aw-single-controls .history-card .history-prompt {max-height:5em;overflow:auto;font-size:12px;white-space:pre-wrap;margin:12px 0}
+.aw-single-controls .history-card img {height:180px}
+.aw-single-controls .history-card .history-meta {font-size:11px;color:var(--muted);margin-bottom:8px;font-variant-numeric:tabular-nums}
+.aw-single-controls .history-card figure {margin:0}
+.aw-single-controls .path {font-size:11px;white-space:pre-line}
+.aw-single-controls .connection-state {font-size:12px;padding:8px 12px;background:#22353b;border:1px solid #5c7880;border-radius:6px;margin:12px 0}
+.aw-single-controls .numeric-field {max-width:240px}
+@container(max-width:850px) {.aw-single-controls .columns-3{grid-template-columns:repeat(2,minmax(0,1fr))}.aw-single-controls .starting-grid{grid-template-columns:1fr}.aw-single-controls .reference-input{padding:18px 0 0;border-left:0;border-top:1px solid var(--line)}}
+@container(max-width:590px) {.aw-single-controls .columns-2,.aw-single-controls .columns-3,.aw-single-controls .cards{grid-template-columns:1fr}.aw-single-controls .tabs{padding:0 8px}.aw-single-controls .tabs button{padding:9px 7px;font-size:12px}.aw-single-controls .tabs button:nth-child(4){margin-left:0}.aw-single-controls .control-panel{padding:15px}.aw-single-controls .content{padding:16px}.aw-single-controls .job-actions{margin:0;justify-content:flex-start}.aw-single-controls .range-values{grid-template-columns:minmax(0,1fr) 82px}}
