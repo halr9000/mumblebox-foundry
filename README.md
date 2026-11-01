@@ -2,7 +2,7 @@
 
 A local ComfyUI interface for turning reference images into textured 3D assets. A guided workflow connects four-view image generation, Pixal3D/TRELLIS.2 geometry, Hi3D refinement, measured cleanup, texturing and selected exports.
 
-**Preview 0.1.0-preview.3 — Windows / NVIDIA.** This is an early release with manual dependency setup, not a one-click installer. Start with [installation](INSTALL.md). Original Foundry code is Apache-2.0; models and third-party tools retain their own terms. Read [third-party notices](THIRD-PARTY.md), particularly before commercial use.
+**Preview 0.1.0-preview.4 — Windows / NVIDIA.** This is an early release with manual dependency setup, not a one-click installer. Start with [installation](INSTALL.md). Original Foundry code is Apache-2.0; models and third-party tools retain their own terms. Read [third-party notices](THIRD-PARTY.md), particularly before commercial use.
 
 ## Included
 

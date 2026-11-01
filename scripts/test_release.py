@@ -17,6 +17,11 @@ class InstallTests(unittest.TestCase):
         (self.user/"asset-workshop.json").write_text(json.dumps({"theme":"keep","pipeline_runtime":{"stable_materials":"preserve"}}))
         self.args=argparse.Namespace(comfy=str(self.core),user_directory=None,worker_python=str(self.exe),trellis_repo=str(self.repo),trellis_models=str(self.models),blender=str(self.exe),hi3d_url="http://127.0.0.1:8378")
     def tearDown(self):self.temp.cleanup()
+    def test_release_inventory_contains_material_editor(self):
+        spec=importlib.util.spec_from_file_location('builder',Path(__file__).with_name('build_release.py'))
+        builder=importlib.util.module_from_spec(spec);spec.loader.exec_module(builder)
+        names={p.relative_to(builder.ROOT).as_posix() for p in builder.inventory()}
+        self.assertIn('comfyui_asset_workshop/material_lab/material_editor.html',names)
     def test_install_and_repeat_preserve(self):
         installer.install(self.args)
         target=self.core/"custom_nodes/comfyui_asset_workshop"

@@ -5,7 +5,7 @@ ROOT=Path(__file__).resolve().parents[1]
 PACK=ROOT/"comfyui_asset_workshop"
 TOP=("README.md","INSTALL.md","THIRD-PARTY.md","LICENSE","NOTICE","dependencies.json","requirements-worker-windows.txt")
 DIRECTORIES=("agent","finishing","foundry","licenses","material_lab","pipeline_workers","web","workflows")
-EXTENSIONS={".py",".json",".js",".css",".svg",".png",".md",".txt"}
+EXTENSIONS={".py",".json",".js",".css",".svg",".png",".md",".txt",".html"}
 IGNORED={".venv","__pycache__","node_modules",".git"}
 
 def inventory():

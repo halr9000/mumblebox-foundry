@@ -1,6 +1,6 @@
-# Preview 0.1.0-preview.3 validation
+# Preview 0.1.0-preview.4 validation
 
-Validated on 2026-11-01. Evidence below separates installed control actions, automated tests and exported-asset checks. Generated test assets and local diagnostic receipts are not distributed.
+Validated on 2026-11-01. Preview.4 corrects an archive inventory omission of the retained Materials Lab HTML entry point; the main wizard and mesh pipeline are unchanged. A regression check now requires that entry point in the archive. Public preview.3 was downloaded without authentication, its digest matched, and the installed update control successfully read its GitHub release. Evidence below separates installed control actions, automated tests and exported-asset checks. Generated test assets and local diagnostic receipts are not distributed.
 
 ## Installed interface checks
 
@@ -23,7 +23,7 @@ The latest checks did not submit a new full GPU generation or execute a real mid
 ## Automated tests
 
 - Foundry Python suite: **63 passed**. Coverage includes run contracts/recovery, Rocket branch selection and retry idempotency, cancellation/error checkpoint preservation, library paths, resource ownership, MCP boundaries, first-use readiness, missing-only downloads and update checks.
-- Release installer: **4 passed**. Installation/reinstallation preserves settings and model sentinels; changed files are backed up; remote Hi3D URLs and OneDrive runtime paths are rejected before installation writes.
+- Release installer: **5 passed**. Installation/reinstallation preserves settings and model sentinels; changed files are backed up; remote Hi3D URLs and OneDrive runtime paths are rejected before installation writes.
 - JavaScript activity/viewer/session suite: **6 passed**. Includes activity states, drag-only viewer input and fresh-versus-resumed wizard state and missing-field defaults for older agent-opened runs.
 - Ten installed texture snapshot files matched the pinned manifest; verification required **zero model downloads**.
 - Original source diff whitespace checks passed; retained upstream license/vendor text was not reformatted.
