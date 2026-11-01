@@ -56,6 +56,21 @@ class AgentPackageTests(unittest.TestCase):
         self.project = self.library.load(self.project["id"])
         return self.export.create_package(self.library, self.project["id"], self.project["revision"], ["mesh1"])
 
+    def test_upstream_notices_and_resource_links_are_in_the_archive(self):
+        package = self.package()
+        path = self.library.path(self.project['id'], package['file'])
+        with zipfile.ZipFile(path) as archive:
+            self.assertIn('RESOURCE-INDEX.md', archive.namelist())
+            index = archive.read('RESOURCE-INDEX.md').decode('utf-8')
+            self.assertIn('Powered by Hi3D 1.0', index)
+            self.assertIn('https://github.com/microsoft/TRELLIS.2', index)
+            notices = Path(__file__).parents[1]/'licenses'/'pipeline'
+            for notice in notices.iterdir():
+                if notice.is_file():
+                    name='licenses/'+notice.name
+                    self.assertEqual(archive.read(name), notice.read_bytes())
+                    self.assertIn(name, package['manifest']['files'])
+
     def test_package_contains_one_primary_mesh_primary_image_and_four_references(self):
         package = self.package()
         path = self.library.path(self.project["id"], package["file"])
@@ -84,6 +99,24 @@ class AgentPackageTests(unittest.TestCase):
         self.assertEqual(rear["camera_verification"], "not_measured")
         self.assertIn("front marking", rear["review"]["notes"])
         self.assertTrue(manifest["known_discrepancies"])
+
+    def test_general_asset_zip_does_not_require_four_reviewed_references(self):
+        project = self.library.load(self.project['id'])
+        project['images']['reference_left']['current'] = None
+        project['images']['reference_right']['revisions'][0]['review']['decision'] = 'unreviewed'
+        project['images']['reference_front']['revisions'][0]['review']['decision'] = 'rejected'
+        self.library.save(project)
+        project = self.library.load(project['id'])
+        result = self.export.create_package(self.library, project['id'], project['revision'], ['mesh1'], 'asset')
+        path = self.library.path(project['id'], result['file'])
+        self.assertEqual(self.export.validate_package(str(path))['status'], 'valid')
+        with zipfile.ZipFile(path) as archive:
+            self.assertIn('ASSET-NOTES.md', archive.namelist())
+            self.assertNotIn('AGENT-BRIEF.md', archive.namelist())
+            self.assertNotIn('images/front.png', archive.namelist())
+            self.assertNotIn('images/left.png', archive.namelist())
+            manifest = json.loads(archive.read('manifest.json'))
+            self.assertEqual(manifest['reference_images']['right']['review']['decision'], 'unreviewed')
 
     def test_requested_dimensions_do_not_replace_measured_dimensions(self):
         manifest = self.package()["manifest"]

@@ -11,7 +11,7 @@ import uuid
 from .store import LOCK, IMAGE_ROLES, ApprovalRequired, JobConflict, atomic_json, identifier
 from . import image_edits
 
-KINDS = ("create_image", "three_quarter", "edit_image", "reference_view", "prepare_foreground", "build_mesh_package", "finish_mesh")
+KINDS = ("create_image", "three_quarter", "edit_image", "reference_view", "prepare_foreground", "build_mesh_package", "finish_mesh", "build_geometry", "texture_mesh", "prepare_variant", "prepare_material_guide", "apply_materials")
 REFERENCES = ("reference_front", "reference_back", "reference_left", "reference_right")
 ACTIVE = ("queued", "running")
 
@@ -65,7 +65,11 @@ class JobCoordinator:
 
     @staticmethod
     def stages(kind, payload, job_id):
-        if kind == "build_mesh_package":
+        if kind == "build_geometry":
+            names = [("reference_view", role) for role in REFERENCES] + [("prepare", "mesh_input"),("geometry","mesh_input"),("refine","mesh_input"),("cleanup","mesh_input")]
+        elif kind in ("texture_mesh","prepare_variant","prepare_material_guide","apply_materials"):
+            names = [({"texture_mesh":"texture","prepare_variant":"variant","prepare_material_guide":"material_guide","apply_materials":"materials"}[kind],"mesh_input")]
+        elif kind == "build_mesh_package":
             names = [("reference_view", role) for role in REFERENCES] + [("prepare", "mesh_input"),
                       ("mesh", "mesh_input"), ("finish", "mesh_input")]
         elif kind == "finish_mesh":
@@ -80,7 +84,7 @@ class JobCoordinator:
 
     def start(self, project_id, expected_revision, kind, request_key, payload):
         identifier(request_key)
-        if kind not in KINDS or not isinstance(payload, dict) or payload.keys() - {"role", "edit", "expanded_prompt", "master_id", "export_kind", "resume_job_id"}:
+        if kind not in KINDS or not isinstance(payload, dict) or payload.keys() - {"role", "edit", "expanded_prompt", "master_id", "export_kind", "resume_job_id", "source_id", "variant", "session_id"}:
             raise ValueError("Choose a supported job and its explicit settings.")
         request_hash = fingerprint({"kind": kind, "revision": expected_revision, "payload": payload})
         with LOCK:
@@ -91,6 +95,10 @@ class JobCoordinator:
                     raise JobConflict("This request key belongs to different inputs. Use a new key for a new attempt.")
                 return self.get(project_id, previous["id"])
             snapshot = self.library.job_snapshot(project_id, expected_revision)
+            if "pipeline" in snapshot:
+                sessions=snapshot["pipeline"].get("material_sessions",{})
+                sid=payload.get("session_id")
+                snapshot["pipeline"]["material_sessions"]={sid:sessions[sid]} if sid in sessions else {}
             if kind == "edit_image":
                 if payload.get("role") not in IMAGE_ROLES or not isinstance(payload.get("edit"), str):
                     raise ValueError("Choose a saved selection for this image; file paths cannot be supplied as edit inputs.")
@@ -100,7 +108,7 @@ class JobCoordinator:
                 raise JobConflict("Open the single-image controls in this Comfy Desktop before starting a job.")
             if self.tasks or self.native.active_ids():
                 raise JobConflict("Another Comfy job is active. Wait for it before starting this job.")
-            if kind in ("reference_view", "build_mesh_package"):
+            if kind in ("reference_view", "build_mesh_package", "build_geometry", "texture_mesh"):
                 self.library.mesh_input(project_id)
             job_id = uuid.uuid4().hex
             stages = self.stages(kind, payload, job_id)
@@ -109,9 +117,14 @@ class JobCoordinator:
                 original = self._job(project_id, payload["resume_job_id"])
                 if original["kind"] != kind or original["state"] not in ("failed", "cancelled", "interrupted"):
                     raise JobConflict("Retry only an interrupted, cancelled or failed job of the same kind.")
-                if kind in ("build_mesh_package", "reference_view") and (
+                if kind in ("build_mesh_package", "build_geometry", "texture_mesh", "reference_view") and (
                         original["snapshot"]["images"]["mesh_input"]["approved"] != snapshot["images"]["mesh_input"]["approved"]):
                     raise ApprovalRequired("The primary image changed. Start a new job instead of reusing the old stages.")
+                original_payload=copy.deepcopy(original["payload"])
+                for key,value in payload.items():
+                    if key!="resume_job_id" and value!=original_payload.get(key):
+                        raise JobConflict("Retry preserves the original operation inputs. Start a new job to change them.")
+                payload={**original_payload,"resume_job_id":original["id"]}
                 snapshot = copy.deepcopy(original["snapshot"])
                 stages = copy.deepcopy(original["stages"])
                 for index, stage in enumerate(stages):
@@ -177,7 +190,7 @@ class JobCoordinator:
                 stage = job["stages"][index]
                 if stage["state"] == "completed":
                     continue
-                if job["kind"] == "build_mesh_package":
+                if job["kind"] in ("build_mesh_package", "build_geometry", "texture_mesh"):
                     approved = self.library.mesh_input(project_id)
                     original = job["snapshot"]["images"]["mesh_input"]["approved"]
                     if approved["id"] != original:
@@ -190,7 +203,7 @@ class JobCoordinator:
                 if stage["name"] == "edit_image":
                     snapshot["task_payload"]["edit"] = image_edits.load(self.library,
                         self.library.load(project_id), job["payload"]["edit"], stage["role"])
-                requested = snapshot["settings"]["mesh_requested_seed" if stage["name"] == "mesh" else "requested_seed"]
+                requested = snapshot["settings"]["mesh_requested_seed" if stage["name"] in ("mesh","geometry") else "requested_seed"]
                 snapshot["settings"]["seed"] = secrets.randbelow(2**32) if requested < 0 else int(requested)
                 self._change(project_id, job_id, state="running", phase=f"Preparing {index+1}/{len(job['stages'])}: {stage['name']}")
                 built = self.build_stage(self.library.load(project_id), snapshot, stage, job)
@@ -219,7 +232,7 @@ class JobCoordinator:
                 if actual_id != prompt_id:
                     raise JobConflict("Comfy returned a different prompt identity; inspect the queue before retrying.")
                 self.lifecycle.track(prompt_id, (project_id, job_id))
-                timeout = 1800 if stage["name"] == "mesh" else 900 if stage["name"] == "finish" else 1200
+                timeout = 3900 if stage["name"] in ("geometry","refine","texture","variant","material_guide","materials") else 1800 if stage["name"] == "mesh" else 900 if stage["name"] == "finish" else 1200
                 cancelled = lambda: self._job(project_id, job_id)["cancel_requested"]
                 if cancelled():
                     self.lifecycle.cancel(prompt_id)

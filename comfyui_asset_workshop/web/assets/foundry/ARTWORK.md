@@ -1,0 +1,18 @@
+# Foundry artwork
+
+Workflow illustrations were generated with the built-in OpenAI image-generation tool on 2026-11-01 for this product. They are UI illustrations, not outputs of the mesh pipeline and not evidence of its results. Original outputs are retained; these packaged PNGs are the selected copies.
+
+Shared direction: square, professional sculptural 3D product render; charcoal studio, ivory/sage materials, warm orange lighting, clear centered subject, no lettering or logo.
+
+- `image-to-3d.png`: ivory adventurer emerging from a photographic reference card, partial sage wireframe.
+- `text.png`: fountain-pen nib and blank paper with a spacecraft drawing emerging into a solid model.
+- `repair.png`: carved lion head transitioning from coarse damaged triangles to a detailed intact sculpture.
+- `video.png`: filmstrip with multiple viewpoints curving around a retro racing car.
+- `turntable.png`: ivory dragon figurine on a motorized turntable with a camera aimed at the subject.
+- `figure.png`: personalized collectible astronaut figure on an octagonal base, with a matching portrait reference.
+
+## Approved logo
+
+`logo-approved.png` is the active logo for both light and dark themes. The approved spaced composition was selected on 2026-11-01: silver MUMBLEBOX wordmark, 3D ASSET FOUNDRY subtitle, flat rainbow chaos star on a plain black rounded badge, and clear separation between badge and lettering. Generated and edited with the built-in image-generation tool using the supplied star as reference. Alpha transparency is retained. The application loads the same asset for both themes. Earlier PNG/SVG variants are retained for rollback and are not active UI assets.
+
+Final prompt direction: preserve the approved silver lettering; provide a deliberate badge-to-wordmark gap and subtitle spacing; align the badge against the whole text block; keep the star and black rounded square flat and effect-free. Exact text: MUMBLEBOX / 3D ASSET FOUNDRY.

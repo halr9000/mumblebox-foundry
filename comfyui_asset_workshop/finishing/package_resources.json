@@ -1,0 +1,357 @@
+{
+  "comfyui": {
+    "id": "comfyui",
+    "stage": "Workflow execution, native mesh conversion and detail baking",
+    "name": "ComfyUI",
+    "version": "0.42.5 (this installed workflow)",
+    "source": "https://github.com/Comfy-Org/ComfyUI",
+    "notices": [
+      "ComfyUI-GPL-3.0.txt"
+    ],
+    "license": "GPL-3.0",
+    "license_url": "https://github.com/Comfy-Org/ComfyUI/blob/master/LICENSE",
+    "license_summary": "Software distribution is governed by GPL terms; this does not assign that license to an output mesh."
+  },
+  "blender": {
+    "id": "blender",
+    "stage": "UVs, authoring exports, FBX conversion and relocated import checks",
+    "name": "Blender",
+    "version": "5.2.2 LTS",
+    "source": "https://www.blender.org/about/license/",
+    "notices": [
+      "Blender-GPL-3.0.txt"
+    ],
+    "license": "GPL-3.0",
+    "license_url": "https://www.blender.org/about/license/",
+    "license_summary": "Blender software licensing is separate from the assets created with it."
+  },
+  "qwen21": {
+    "id": "qwen21",
+    "stage": "Four-view image turnaround",
+    "name": "Qwen Image 2.1",
+    "version": "2.1; Comfy-Org INT8 ConvRot weights",
+    "source": "https://huggingface.co/Qwen/Qwen-Image-2.1",
+    "notices": [
+      "Qwen-Image-2.1-LICENSE.txt",
+      "Qwen-Image-2.1-NOTICE.txt"
+    ],
+    "note": "Qwen Image 2.1 model use is governed by the retained research license. This package does not assert commercial authorization.",
+    "license": "Qwen Research License",
+    "license_url": "https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/LICENSE",
+    "license_summary": "The retained model license covers research and evaluation use; commercial authorization is not asserted by this package."
+  },
+  "pixal3d": {
+    "id": "pixal3d",
+    "stage": "Multiview geometry",
+    "name": "Pixal3D",
+    "version": "Multiview BF16 weights",
+    "source": "https://ldyang694.github.io/projects/pixal3d/",
+    "notices": [
+      "Pixal3D-MIT.txt"
+    ],
+    "license": "MIT",
+    "license_url": "https://github.com/TencentARC/Pixal3D/blob/main/LICENSE",
+    "license_summary": "Retain the copyright and permission notice for licensed material; separately supplied dependencies retain their own terms."
+  },
+  "trellis2": {
+    "id": "trellis2",
+    "stage": "Shape decoding and post-refinement texture generation",
+    "name": "TRELLIS.2",
+    "version": "Shape VAE BF16; 4K texture stage",
+    "source": "https://github.com/microsoft/TRELLIS.2",
+    "notices": [
+      "TRELLIS2-MIT.txt"
+    ],
+    "license": "MIT",
+    "license_url": "https://github.com/microsoft/TRELLIS.2/blob/main/LICENSE",
+    "license_summary": "The upstream project uses MIT terms; separately supplied components retain their own licenses."
+  },
+  "hi3d": {
+    "id": "hi3d",
+    "stage": "Mesh refinement",
+    "name": "Powered by Hi3D 1.0",
+    "version": "1.0",
+    "source": "https://www.hi3d.ai/",
+    "notices": [
+      "Hi3D-Open-License-v1.md",
+      "Hi3D-T8-integration-MIT.txt",
+      "Hi3D-T8-workbench-NOTICE.md"
+    ],
+    "license": "Hi3D Open License v1",
+    "license_url": "https://github.com/hi3d-official/Hi3Dv1.0/blob/main/LICENSE",
+    "license_summary": "Custom model and product-use terms apply. Consult the retained agreement, including its attribution and output provisions."
+  },
+  "quadriflow": {
+    "id": "quadriflow",
+    "stage": "Accepted optional quad retopology",
+    "name": "QuadriFlow via pyQuadriFlow",
+    "version": "pyQuadriFlow 0.2.0",
+    "source": "https://github.com/hjwdzh/QuadriFlow",
+    "notices": [
+      "QuadriFlow-MIT.txt"
+    ],
+    "license": "MIT",
+    "license_url": "https://github.com/hjwdzh/QuadriFlow/blob/master/LICENSE",
+    "license_summary": "Retain the copyright and permission notice when redistributing licensed material."
+  },
+  "pymeshlab": {
+    "id": "pymeshlab",
+    "stage": "Reduction, material transfer and geometry checks",
+    "name": "PyMeshLab",
+    "version": "2025.7.post1",
+    "source": "https://github.com/cnr-isti-vclab/PyMeshLab",
+    "notices": [
+      "PyMeshLab-LICENSE.txt"
+    ],
+    "license": "GPL-3.0",
+    "license_url": "https://github.com/cnr-isti-vclab/PyMeshLab/blob/master/LICENSE",
+    "license_summary": "GPL terms govern the software; the package does not assign a finished-asset license."
+  },
+  "meshlib": {
+    "id": "meshlib",
+    "stage": "Print-only contact repair",
+    "name": "MeshLib",
+    "version": "3.1.4.297",
+    "source": "https://github.com/MeshInspector/MeshLib",
+    "notices": [
+      "MeshLib-LICENSE.txt"
+    ],
+    "license": "MeshLib license",
+    "license_url": "https://github.com/MeshInspector/MeshLib/blob/master/LICENSE",
+    "license_summary": "The retained license includes noncommercial and education conditions; separate commercial entitlement is not established here."
+  },
+  "trellis_wrapper": {
+    "id": "trellis_wrapper",
+    "stage": "Existing-mesh texture integration",
+    "name": "ComfyUI-Trellis2 by visualbruno",
+    "version": "b0e84c0f29857a444e8bcb5b9be2ea218e96efd0",
+    "source": "https://github.com/visualbruno/ComfyUI-Trellis2",
+    "notices": [
+      "Trellis2-wrapper-MIT.txt"
+    ],
+    "license": "MIT",
+    "license_url": "https://github.com/visualbruno/ComfyUI-Trellis2/blob/b0e84c0f29857a444e8bcb5b9be2ea218e96efd0/LICENSE",
+    "license_summary": "Retain copyright and permission notices when redistributing this integration."
+  },
+  "dinov3": {
+    "id": "dinov3",
+    "stage": "Image features for multiview geometry",
+    "name": "DINOv3",
+    "version": "f37641be376725d324c56626007cc477f1249a69",
+    "source": "https://huggingface.co/Comfy-Org/Pixal3D",
+    "notices": [
+      "DINOv3-LICENSE.md"
+    ],
+    "license": "DINOv3 License",
+    "license_url": "https://github.com/facebookresearch/dinov3/blob/ffb4bb89c6558ca3244655c25a3955d01788b732/LICENSE.md",
+    "license_summary": "Custom terms govern the DINOv3 material; consult the retained agreement.",
+    "license_revision": "ffb4bb89c6558ca3244655c25a3955d01788b732"
+  },
+  "birefnet": {
+    "id": "birefnet",
+    "stage": "Background removal and prepared reference masks",
+    "name": "BiRefNet",
+    "version": "25511f8787e51912e1480706b4e47b8f467fbf72",
+    "source": "https://huggingface.co/Comfy-Org/BiRefNet",
+    "notices": [
+      "BiRefNet-MIT.txt"
+    ],
+    "license": "MIT",
+    "license_url": "https://github.com/ZhengPeng7/BiRefNet/blob/2713d1293ce8a923d5878f1f30177b78770bf24c/LICENSE",
+    "license_summary": "Retain the copyright and permission notice when redistributing the licensed material.",
+    "license_revision": "2713d1293ce8a923d5878f1f30177b78770bf24c"
+  },
+  "pixelartistry": {
+    "id": "pixelartistry",
+    "stage": "Published four-view turnaround recipe",
+    "name": "PixelArtistry Pixal3D Multiview recipe",
+    "version": "35599df46a7705a7e320034f7108152b76c95ca8",
+    "source": "https://github.com/pixelartistry/PixelArtistry-Pixal3D-Multiview",
+    "notices": [
+      "PixelArtistry-MIT.txt"
+    ],
+    "license": "MIT",
+    "license_url": "https://github.com/pixelartistry/PixelArtistry-Pixal3D-Multiview/blob/35599df46a7705a7e320034f7108152b76c95ca8/LICENSE",
+    "license_summary": "Retain the copyright and permission notice when redistributing the licensed material."
+  },
+  "qwen2511": {
+    "id": "qwen2511",
+    "stage": "Four-view image turnaround",
+    "name": "Qwen Image Edit 2511",
+    "version": "qwen_image_edit_2511_fp8mixed.safetensors",
+    "source": "https://huggingface.co/Qwen/Qwen-Image-Edit-2511",
+    "notices": [
+      "Apache-2.0.txt",
+      "Qwen-Edit-2511-model-card.md"
+    ],
+    "license": "Apache 2.0",
+    "license_url": "https://huggingface.co/Qwen/Qwen-Image-Edit-2511#license-agreement",
+    "license_summary": "Permits commercial use under Apache 2.0 terms. Retain applicable notices."
+  },
+  "klein4": {
+    "id": "klein4",
+    "stage": "Four-view image turnaround",
+    "name": "FLUX.2 Klein 4B",
+    "version": "flux-2-klein-4b-fp8.safetensors",
+    "source": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4B",
+    "notices": [
+      "Apache-2.0.txt",
+      "FLUX2-model-overview.md"
+    ],
+    "license": "Apache 2.0",
+    "license_url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4B",
+    "license_summary": "Permits commercial use under Apache 2.0 terms. Other pipeline components have their own terms."
+  },
+  "klein4_base": {
+    "id": "klein4_base",
+    "stage": "Four-view image turnaround",
+    "name": "FLUX.2 Klein 4B base",
+    "version": "flux-2-klein-base-4b-fp8.safetensors",
+    "source": "https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B",
+    "notices": [
+      "Apache-2.0.txt",
+      "FLUX2-model-overview.md"
+    ],
+    "license": "Apache 2.0",
+    "license_url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B",
+    "license_summary": "Permits commercial use under Apache 2.0 terms. Other pipeline components have their own terms."
+  },
+  "flux3_distilled": {
+    "id": "flux3_distilled",
+    "stage": "Four-view image turnaround",
+    "name": "FLUX 3 Image Klein distilled",
+    "version": "flux3-image-klein-int8-convrot.safetensors",
+    "source": "https://huggingface.co/black-forest-labs/flux-3-image-klein",
+    "notices": [
+      "FLUX-Kommunity-v1.txt"
+    ],
+    "license": "FLUX Kommunity License",
+    "license_url": "https://huggingface.co/black-forest-labs/flux-3-image-klein/blob/main/LICENSE.md",
+    "license_summary": "Commercial use is available to qualifying users under the Kommunity terms; other users need a separate license. Review the eligibility conditions."
+  },
+  "flux3_base": {
+    "id": "flux3_base",
+    "stage": "Four-view image turnaround",
+    "name": "FLUX 3 Image Klein base",
+    "version": "flux3-image-klein-base-int8-convrot.safetensors",
+    "source": "https://huggingface.co/black-forest-labs/flux-3-image-klein",
+    "notices": [
+      "FLUX-Kommunity-v1.txt"
+    ],
+    "license": "FLUX Kommunity License",
+    "license_url": "https://huggingface.co/black-forest-labs/flux-3-image-klein/blob/main/LICENSE.md",
+    "license_summary": "Commercial use is available to qualifying users under the Kommunity terms; other users need a separate license. Review the eligibility conditions."
+  },
+  "klein_distilled": {
+    "id": "klein_distilled",
+    "stage": "Four-view image turnaround",
+    "name": "FLUX.2 Klein 9B distilled",
+    "version": "flux-2-klein-9b-fp8.safetensors",
+    "source": "https://huggingface.co/black-forest-labs/FLUX.2-klein-9B",
+    "notices": [
+      "FLUX-Non-Commercial.txt",
+      "FLUX2-model-overview.md"
+    ],
+    "license": "FLUX Non-Commercial License",
+    "license_url": "https://github.com/black-forest-labs/flux2/blob/main/model_licenses/LICENSE-FLUX-NON-COMMERICAL",
+    "license_summary": "Model operation is noncommercial unless separately licensed. Output provisions are distinct; consult the agreement."
+  },
+  "klein_base": {
+    "id": "klein_base",
+    "stage": "Four-view image turnaround",
+    "name": "FLUX.2 Klein 9B base",
+    "version": "flux-2-klein-base-9b-fp8.safetensors",
+    "source": "https://huggingface.co/black-forest-labs/FLUX.2-klein-base-9B",
+    "notices": [
+      "FLUX-Non-Commercial.txt",
+      "FLUX2-model-overview.md"
+    ],
+    "license": "FLUX Non-Commercial License",
+    "license_url": "https://github.com/black-forest-labs/flux2/blob/main/model_licenses/LICENSE-FLUX-NON-COMMERICAL",
+    "license_summary": "Model operation is noncommercial unless separately licensed. Output provisions are distinct; consult the agreement."
+  },
+  "klein_kv": {
+    "id": "klein_kv",
+    "stage": "Four-view image turnaround",
+    "name": "FLUX.2 Klein 9B KV",
+    "version": "flux-2-klein-9b-kv-fp8.safetensors",
+    "source": "https://huggingface.co/black-forest-labs/FLUX.2-klein-9b-kv",
+    "notices": [
+      "FLUX-Non-Commercial.txt",
+      "FLUX2-model-overview.md"
+    ],
+    "license": "FLUX Non-Commercial License",
+    "license_url": "https://github.com/black-forest-labs/flux2/blob/main/model_licenses/LICENSE-FLUX-NON-COMMERICAL",
+    "license_summary": "Model operation is noncommercial unless separately licensed. Output provisions are distinct; consult the agreement."
+  },
+  "qwen25vl": {
+    "id": "qwen25vl",
+    "stage": "Turnaround text and reference encoding",
+    "name": "Qwen2.5-VL 7B image encoder",
+    "version": "Exact weight revision and hash in Metadata/production.json",
+    "source": "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct",
+    "notices": [
+      "Apache-2.0.txt",
+      "Qwen2.5-VL-7B-model-card.md"
+    ],
+    "license": "Apache 2.0",
+    "license_url": "https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct",
+    "license_summary": "Model card declares Apache 2.0. The retained Apache text and source model card describe these terms; repacked weights are identified in the production record."
+  },
+  "qwen3_4b": {
+    "id": "qwen3_4b",
+    "stage": "Turnaround text and reference encoding",
+    "name": "Qwen3 4B text encoder",
+    "version": "Exact weight revision and hash in Metadata/production.json",
+    "source": "https://huggingface.co/Qwen/Qwen3-4B",
+    "notices": [
+      "Apache-2.0.txt",
+      "Qwen3-4B-model-card.md"
+    ],
+    "license": "Apache 2.0",
+    "license_url": "https://huggingface.co/Qwen/Qwen3-4B",
+    "license_summary": "Model card declares Apache 2.0. The retained Apache text and source model card describe these terms; repacked weights are identified in the production record."
+  },
+  "qwen3_8b": {
+    "id": "qwen3_8b",
+    "stage": "Turnaround text and reference encoding",
+    "name": "Qwen3 8B text encoder",
+    "version": "Exact weight revision and hash in Metadata/production.json",
+    "source": "https://huggingface.co/Qwen/Qwen3-8B",
+    "notices": [
+      "Apache-2.0.txt",
+      "Qwen3-8B-model-card.md"
+    ],
+    "license": "Apache 2.0",
+    "license_url": "https://huggingface.co/Qwen/Qwen3-8B",
+    "license_summary": "Model card declares Apache 2.0. The retained Apache text and source model card describe these terms; repacked weights are identified in the production record."
+  },
+  "qwen3vl_encoder": {
+    "id": "qwen3vl_encoder",
+    "stage": "Turnaround text and reference encoding",
+    "name": "Qwen3-VL 4B image encoder",
+    "version": "Exact weight revision and hash in Metadata/production.json",
+    "source": "https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct",
+    "notices": [
+      "Apache-2.0.txt",
+      "Qwen3-VL-4B-model-card.md"
+    ],
+    "license": "Apache 2.0",
+    "license_url": "https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct",
+    "license_summary": "Model card declares Apache 2.0. The retained Apache text and source model card describe these terms; repacked weights are identified in the production record."
+  },
+  "flux_vae": {
+    "id": "flux_vae",
+    "stage": "Turnaround image encoding and decoding",
+    "name": "FLUX.2 autoencoder",
+    "version": "flux2-vae; exact hash in production record",
+    "source": "https://github.com/black-forest-labs/flux2#flux2-autoencoder",
+    "notices": [
+      "Apache-2.0.txt",
+      "FLUX2-model-overview.md"
+    ],
+    "license": "Apache 2.0",
+    "license_url": "https://github.com/black-forest-labs/flux2#flux2-autoencoder",
+    "license_summary": "BFL releases the autoencoder under Apache 2.0 separately from the image generation weights."
+  }
+}

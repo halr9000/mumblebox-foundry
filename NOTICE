@@ -1,0 +1,9 @@
+Mumblebox 3D Asset Foundry
+Copyright 2026 Mumblebox contributors
+
+Original Foundry code is licensed under the Apache License, Version 2.0.
+Third-party code, models, runtimes and artwork retain their separate notices.
+The Hi3D HTTP client is adapted from Hi3D Workbench (T8star), MIT licensed;
+see comfyui_asset_workshop/licenses/Hi3D-Workbench-MIT.txt.
+Model weights are not included. See THIRD-PARTY.md and the model license links.
+This license does not grant rights to the Mumblebox name or logo.

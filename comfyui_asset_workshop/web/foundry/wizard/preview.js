@@ -1,0 +1,51 @@
+import {el,hint} from "../dom.js";
+export async function mountMesh(container,url,module) {
+    let factory=window.comfyAPI?.createLoad3d?.createLoad3d;
+    if(!factory&&module)factory=(await import(module.url))[module.export];
+    if(!factory)throw Error("The native Comfy 3D viewer is not available.");
+    const viewer=module?.host?factory(container,window.comfyAPI.load3dHost.load3dHost):factory(container);
+    let disposed=false;
+    const resize=new ResizeObserver(()=>viewer.handleResize());
+    resize.observe(container);
+    const events=new AbortController();
+    container.addEventListener("pointerenter",()=>viewer.updateStatusMouseOnViewer(true),{signal:events.signal});
+    container.addEventListener("pointerleave",()=>viewer.updateStatusMouseOnViewer(false),{signal:events.signal});
+    const controls=viewer.getControlsManager?.()?.controls||viewer.controlsManager?.controls;
+    const releaseInput=controls?installOrbitInput(container,controls):()=>{};
+    const dispose=()=>{disposed=true;events.abort();releaseInput();resize.disconnect();viewer.remove?.();viewer.dispose?.();};
+    try{
+        await viewer.loadModel(url);
+        if(disposed)return dispose;
+        viewer.handleResize();viewer.fitToViewer();
+        // Apply the native viewer's intended light multiplier, which its bare
+        // factory leaves unapplied until a UI control supplies the setting.
+        viewer.setLightIntensity?.(3);
+        viewer.forceRender();
+    }catch(error){dispose();throw error;}
+    return dispose;
+}
+
+// OrbitControls can retain a drag after the pointer leaves the embedded canvas.
+// Gate camera input by real button state so a subsequent hover cannot move it.
+export function installOrbitInput(container,controls,windowTarget=window){
+    const events=new AbortController();
+    const options={capture:true,signal:events.signal};
+    let releaseTimer;
+    const stop=()=>{controls.enabled=false;};
+    // Run after native pointer/wheel handlers, including when Comfy captures
+    // the event. A microtask can run between browser event listeners.
+    const afterInput=()=>{clearTimeout(releaseTimer);releaseTimer=setTimeout(stop,0);};
+    controls.autoRotate=false;controls.enableDamping=false;stop();
+    container.addEventListener("pointerdown",event=>{
+        controls.enabled=event.pointerType==="touch"||event.button===0||event.button===2;
+    },options);
+    container.addEventListener("pointermove",event=>{
+        if(event.pointerType!=="touch"&&event.buttons===0)stop();
+    },options);
+    container.addEventListener("pointerleave",event=>{if(event.buttons===0)stop();},options);
+    for(const type of ["pointerup","pointercancel"])
+        windowTarget.addEventListener(type,afterInput,options);
+    windowTarget.addEventListener("blur",stop,{signal:events.signal});
+    container.addEventListener("wheel",()=>{controls.enabled=true;afterInput();},options);
+    return ()=>{clearTimeout(releaseTimer);stop();events.abort();};
+}

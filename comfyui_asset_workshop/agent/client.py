@@ -68,6 +68,24 @@ class LocalAPI:
             project_id, expected_revision = project['id'], project['revision']
         return self.request(self.project_path(project_id), {'expected_revision': expected_revision, 'changes': changes or {}}, 'PATCH')
 
+    def save_pipeline(self, project_id, expected_revision, changes):
+        return self.request(self.project_path(project_id,'/pipeline'),{'expected_revision':expected_revision,'changes':changes},'PATCH')
+
+    def select_pipeline_artifact(self,project_id,expected_revision,artifact_id):
+        return self.request(self.project_path(project_id,'/pipeline/select'),{'expected_revision':expected_revision,'artifact_id':identifier(artifact_id)})
+
+    def create_material_session(self,project_id,expected_revision,source_id,settings=None):
+        return self.request(self.project_path(project_id,'/materials'),{'expected_revision':expected_revision,'source_id':identifier(source_id),'settings':settings or {}})
+
+    def get_material_session(self,project_id,session_id):
+        return self.request(self.project_path(project_id,'/materials/'+identifier(session_id)))
+
+    def get_material_selection(self,project_id,session_id,mask_id):
+        return self.request(self.project_path(project_id,'/materials/'+identifier(session_id)+'/selections/'+identifier(mask_id)))
+
+    def save_material_choices(self,project_id,session_id,expected_draft_revision,state):
+        return self.request(self.project_path(project_id,'/materials/'+identifier(session_id)),{'expected_draft_revision':expected_draft_revision,'state':state},'PATCH')
+
     def allowed_input(self, path):
         resolved = Path(path).resolve(strict=True)
         if resolved not in self.input_files and not any(resolved.is_relative_to(root) for root in self.input_roots):
@@ -122,9 +140,9 @@ class LocalAPI:
             result['preview'] = self.request(path+'?preview=1', binary=True)
         return result
 
-    def export_package(self, project_id, expected_revision, artifact_ids):
+    def export_package(self, project_id, expected_revision, artifact_ids, audience="agent"):
         return self.request(self.project_path(project_id, '/packages'), {'expected_revision': expected_revision,
-            'artifact_ids': [identifier(i) for i in artifact_ids]})
+            'artifact_ids': [identifier(i) for i in artifact_ids], 'audience':audience})
 
     def release_models(self):
         return self.request('/release', {})

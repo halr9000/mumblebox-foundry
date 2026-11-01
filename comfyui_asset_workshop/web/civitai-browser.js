@@ -1,4 +1,5 @@
 import {api} from "../../../scripts/api.js";
+import {modelUsageRows} from "./model-usage.js";
 
 const PREFIX="/asset-workshop/v2/civitai";
 const NSFW_KEY="mumblebox-civitai-nsfw";
@@ -96,7 +97,7 @@ export class CivitaiBrowser {
     }
     chooseVersion(version){this.state.version=version;this.state.file=version?.files.find(f=>f.eligible)||version?.files[0]||null;}
     async loadInstalled(){this.installed=(await request("/installed")).items;}
-    needsProfileChange(item){return item.profile!==this.host.project.profile&&!(item.family==="sdxl"&&this.host.project.profile.startsWith("sdxl"));}
+    needsProfileChange(item){return !(item.profiles||[item.profile]).includes(this.host.project.profile)&&!(item.family==="sdxl"&&this.host.project.profile.startsWith("sdxl"));}
     applyLabel(item){
         const action=item.kind==="LORA"?"Add LoRA":"Use checkpoint";
         return this.needsProfileChange(item)?`${action} with ${this.host.capabilities.profiles[item.profile].label}`:action;
@@ -128,7 +129,7 @@ export class CivitaiBrowser {
     updateProgress(){
         const d=this.download;
         for(const node of this.progressNodes){
-            node.hidden=!d.status||d.status==="idle";
+            node.hidden=!d.status||d.status==="idle"||(d.status==="completed"&&this.host.tab!=="Integrations");
             if(node.hidden)continue;
             const total=Number(d.total)||0,received=Number(d.bytes)||0;
             const meter=el("progress",{"aria-label":"Civitai file download"});
@@ -224,15 +225,12 @@ export class CivitaiBrowser {
         if(v.triggers.length)section.append(el("h4",{},"Creator trigger words"),el("p",{class:"civitai-trigger"},v.triggers.join(", ")));
         section.append(el("h4",{},"Creator’s usage notes"),el("p",{class:"civitai-notes"},v.notes||m.description||"No creator instructions were supplied."));
         section.append(el("h4",{},"Usage conditions"),this.hint("The creator’s permissions and the base model’s license apply separately. Read the linked resource page before commercial use."));
-        const permissions=m.permissions||{};
-        const commercial=Array.isArray(permissions.allowCommercialUse)?permissions.allowCommercialUse.join(", "):String(permissions.allowCommercialUse??"Not specified");
-        section.append(el("dl",{class:"civitai-permissions"},el("dt",{},"Creator commercial-use flags"),el("dd",{},commercial),
-            el("dt",{},"Credit required"),el("dd",{},permissions.allowNoCredit===true?"Creator allows use without credit":permissions.allowNoCredit===false?"Creator requires credit":"Not specified"),
-            el("dt",{},"Derived models"),el("dd",{},permissions.allowDerivatives===true?"Allowed by creator":permissions.allowDerivatives===false?"Restricted by creator":"Not specified")));
+        section.append(el("dl",{class:"civitai-permissions"},
+            modelUsageRows(m.permissions,true).flatMap(([label,value])=>[el("dt",{},label),el("dd",{},value)])));
         content.append(section);
     }
     renderInstalled(content){
-        const rows=this.installed.filter(item=>item.profile===this.state.profile||item.family==="sdxl"&&this.state.profile.startsWith("sdxl"));
+        const rows=this.installed.filter(item=>(item.profiles||[item.profile]).includes(this.state.profile)||item.family==="sdxl"&&this.state.profile.startsWith("sdxl"));
         content.append(this.host.disclosure(`Downloaded resources (${rows.length})`,
             rows.length?rows.map(item=>el("article",{class:"civitai-installed"},el("div",{},el("strong",{},item.model_name),
                 this.hint(`${item.version_name} · ${item.base_model} · ${size(item.size_bytes)}`)),

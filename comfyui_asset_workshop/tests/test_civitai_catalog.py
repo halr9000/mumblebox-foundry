@@ -19,6 +19,28 @@ def resource(kind='LORA', base='SDXL 1.0'):
 
 
 class CatalogTests(unittest.TestCase):
+    def test_community_weights_are_initial_image_resources(self):
+        for kind in ('LORA', 'Checkpoint'):
+            result = catalog.resolve_file(resource(kind), 20, 30, 'sdxl_base', kind)
+            self.assertEqual(result['usage_scope'], 'initial_image')
+
+    def test_nsfw_opt_in_reaches_search_and_filters_model_previews(self):
+        model = resource()
+        model['nsfw'] = True
+        model['modelVersions'][0]['images'] = [
+            {'url': 'https://image.civitai.com/example/preview.jpg', 'nsfwLevel': 1}]
+        self.assertEqual(catalog.normalize_model(model, 'sdxl_base')['versions'][0]['images'], [])
+        self.assertEqual(len(catalog.normalize_model(model, 'sdxl_base', True)['versions'][0]['images']), 1)
+        client = catalog.CatalogClient()
+        captured = []
+        def get(path, params):
+            captured.append(params)
+            return {'items': [model]}
+        client.get = get
+        self.assertEqual(client.search('sdxl_base', nsfw=False)['items'], [])
+        self.assertEqual(len(client.search('sdxl_base', nsfw=True)['items']), 1)
+        self.assertEqual([p['nsfw'] for p in captured], ['false', 'true'])
+
     def test_lora_weight_file_category_model_is_accepted(self):
         result = catalog.resolve_file(resource(), 20, 30, 'sdxl_base', 'LORA')
         self.assertEqual(result['family'], 'sdxl')

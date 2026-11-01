@@ -6,6 +6,8 @@ import tempfile
 import threading
 import types
 import unittest
+import json
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 package = types.ModuleType('aw_civitai_download_test')
@@ -160,6 +162,48 @@ class DownloadTests(unittest.TestCase):
             with self.assertRaises(Exception): self.manager.start({'model_id':1,'version_id':2,'file_id':3,'profile':'sdxl_base','kind':'LORA'})
         finally:
             self.manager.gate.release()
+
+    def test_included_guides_share_civitai_store_and_preserve_existing_entries(self):
+        self.start()
+        guide = json.loads((ROOT / 'lora_guides.json').read_text(encoding='utf-8'))['guides'][0]
+        model = json.loads((ROOT / 'models.lock.json').read_text())['models'][guide['model_key']]
+        path = self.root / 'loras' / model['name']
+        path.write_bytes(b'fixture weights')
+        with patch.object(module, 'file_hash', return_value=model['sha256']) as hasher:
+            result = module.register_included_lora_info(self.root, [model['name']])
+            self.assertEqual(result['registered'], [model['name']])
+            module.register_included_lora_info(self.root, [model['name']])
+            self.assertEqual(hasher.call_count, 1, 'Unchanged files must not be rehashed on every refresh')
+        records = self.manager.installed()
+        self.assertEqual(len(records), 2)
+        included = next(r for r in records if r['source_provider'] == 'huggingface')
+        self.assertEqual(included['creator'], guide['creator'])
+        self.assertEqual(included, json.loads(path.with_suffix('.civitai.json').read_text(encoding='utf-8')))
+        self.assertIn('guide', included)
+        original = next(r for r in records if r['source_provider'] == 'civitai')
+        self.assertEqual(original['source_url'], self.descriptor['source_url'])
+        self.assertNotIn('download_url', original)
+
+    def test_unmatched_weights_never_acquire_an_included_identity(self):
+        guide = json.loads((ROOT / 'lora_guides.json').read_text(encoding='utf-8'))['guides'][0]
+        model = json.loads((ROOT / 'models.lock.json').read_text())['models'][guide['model_key']]
+        path = self.root / 'loras' / model['name']
+        path.parent.mkdir();path.write_bytes(b'different weights with the same filename')
+        result = module.register_included_lora_info(self.root, [model['name']])
+        self.assertEqual(result['unrecognized'], [model['name']])
+        self.assertEqual(self.manager.installed(), [])
+
+    def test_model_info_preserves_user_fields_and_rejects_outside_path(self):
+        self.start()
+        original = self.manager.installed()[0]
+        target = self.root / original['category'] / original['relative_path']
+        original['user_notes'] = 'Keep my note'
+        module.publish_model_info(self.root, target, original)
+        saved = module.publish_model_info(self.root, target, {**self.descriptor, 'creator': 'Source author'})
+        self.assertEqual(saved['user_notes'], 'Keep my note')
+        self.assertEqual(saved['creator'], 'Source author')
+        with self.assertRaises(Exception):
+            module.publish_model_info(self.root, self.root.parent / 'escape.safetensors', self.descriptor)
 
 
 if __name__ == '__main__': unittest.main()

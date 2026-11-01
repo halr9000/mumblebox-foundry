@@ -22,7 +22,10 @@ class PublicMetadataTests(unittest.TestCase):
             'edit': {'id': 'edit1', 'source': {'id': 'original1', 'file': 'private-source.png'},
                      'mask': {'file': 'private-mask.png'}}, 'prompt': 'private prompt'}}
         project = {'jobs': [], 'images': {'design': {'revisions': [edited]}}, 'artifacts': [package, master]}
+        project['pipeline']={'material_sessions':{'session1':{'draft':{'regions':[{'id':0,'kind':'faces','name':'Eyes','face_mask':'x'*100000}], 'editorDraft':{'prompt':'private unfinished note'}}}}}
         result = scope['project_public'](project)
+        self.assertNotIn('face_mask',result['pipeline']['material_sessions']['session1']['draft']['regions'][0])
+        self.assertNotIn('editorDraft',result['pipeline']['material_sessions']['session1']['draft'])
         self.assertFalse('manifest' in result['artifacts'][0], 'Full package manifest leaked into status')
         self.assertFalse('models' in result['artifacts'][1]['recipe'], 'Full model provenance leaked into status')
         self.assertFalse('prompt' in result['artifacts'][1]['recipe'], 'Full prompt leaked into status')

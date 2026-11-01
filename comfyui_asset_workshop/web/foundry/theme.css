@@ -1,0 +1,28 @@
+:host { color-scheme: light dark; }
+.foundry {
+ container-type:inline-size;container-name:foundry;
+ --canvas:#f4f7f2;--panel:#fff;--text:#1f2d26;--muted:#52665a;--accent:#3d7257;--on-accent:#fff;--border:#7d907f;--soft:#e5eee3;--danger:#9b2c32;
+ color-scheme:light;
+}
+.foundry[data-theme="dark"] {
+ --canvas:#11150f;--panel:#1b2119;--text:#f3f6ef;--muted:#bcc8b6;--accent:#b7f34c;--on-accent:#11150f;--border:#617458;--soft:#2c3727;--danger:#ffafb1;
+ color-scheme:dark;
+}
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+.foundry { font:16px/1.55 "Segoe UI",system-ui,sans-serif;color:var(--text);background:var(--canvas);height:100%;position:relative;overflow:hidden;border-radius:14px;display:flex;flex-direction:column; }
+h1,h2,h3 { font-family:Bahnschrift,"Segoe UI",sans-serif;line-height:1.2;margin:0;letter-spacing:-.02em; }
+h1 {font-size:22px;font-weight:650;} h2 {font-size:32px;font-weight:600;} h3 {font-size:21px;font-weight:600;}
+p {margin:0 0 16px;} button,input,select {font:inherit;color:inherit;}
+button,a,input,select {touch-action:manipulation;}
+button {min-height:44px;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:9px;font-weight:600;}
+button:hover:not(:disabled) {background:var(--soft);} button:disabled {cursor:not-allowed;opacity:.6;}
+button.primary {background:var(--accent);color:var(--on-accent);border-color:var(--accent);}
+button.primary:hover:not(:disabled) {filter:brightness(1.08);background:var(--accent);}
+button.danger {color:var(--danger);} a {color:var(--accent);text-decoration:underline;text-underline-offset:3px;}
+:focus-visible {outline:3px solid var(--accent);outline-offset:3px;}
+input,select {background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:10px 12px;min-height:44px;width:100%;}
+input[type="checkbox"] {width:20px;height:20px;min-height:20px;accent-color:var(--accent);}
+.muted {color:var(--muted);font-size:14px;} .eyebrow {text-transform:uppercase;letter-spacing:.12em;font-size:12px;font-weight:700;color:var(--muted);}
+.badge {display:inline-flex;padding:4px 9px;border:1px solid var(--border);border-radius:5px;font-size:12px;letter-spacing:.03em;align-items:center;gap:6px;}
+code,.filename {font:13px/1.5 Consolas,monospace;overflow-wrap:anywhere;}

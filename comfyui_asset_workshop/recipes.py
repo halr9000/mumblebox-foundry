@@ -679,7 +679,7 @@ def foreground_recipe(asset, job, slot):
     return graph, {"slot": slot, "revision": revision}, ["Save editable foreground alpha and cutout. Preserve the original image."]
 
 
-def mesh_recipe(asset, job, prepare_only=False, draft=False):
+def mesh_recipe(asset, job, prepare_only=False, draft=False, geometry_only=False):
     graph = Graph()
     if draft:
         asset = copy.deepcopy(asset)
@@ -719,7 +719,7 @@ def mesh_recipe(asset, job, prepare_only=False, draft=False):
         if mode == "auto":
             moge = graph.add("LoadMoGeModel", model_name=model_name("moge2"))
             geometry = graph.add("MoGeInference", moge_model=moge, image=images[0], resolution_level=9,
-                                 fov_x_degrees=0, batch_size=1, force_projection=True, apply_mask=True, refine_steps=0)
+                                 fov_x_degrees=0, batch_size=1, force_projection=True, apply_mask=True, refine_steps=3 if geometry_only else 0)
             fov = graph.add("MoGeGeometryToFOV", moge_geometry=geometry, axis="horizontal", unit="degrees")
         details["source_camera"] = {"mode":mode, "record":f"jobs/{job['id']}-camera.json"}
         fov = graph.add("AW_RecordSourceFOV", fov=fov, asset_id=asset["id"], job_id=job["id"], mode=mode)
@@ -752,6 +752,13 @@ def mesh_recipe(asset, job, prepare_only=False, draft=False):
                             shape_latent=shape_sample, vae=shape_vae, target_resolution=int(settings["shape_resolution"]))
         high_sample = sample(shape_model, upscale, graph.out(upscale, 1), graph.out(upscale, 2), settings["mesh_refine_steps"], settings["mesh_refine_cfg"], "simple")
     mesh = graph.add("VaeDecodeShapeTrellis", samples=high_sample, vae=shape_vae)
+    if geometry_only:
+        details["pipeline_version"] = "validated_v1"
+        saved = graph.add("AW_SaveGeometry", mesh=mesh, asset_id=asset["id"], stage_id=job["id"],
+                          geometry_stage="coarse", parent_id="", recipe=json.dumps(details))
+        glb = graph.add("MeshToFile3D", mesh=saved)
+        graph.add("Preview3DAdvanced", model_3d=glb, viewport_state="", width=1024, height=1024)
+        return graph, details, ["Shape-only Pixal3D checkpoint. No texture generation before refinement and cleanup."]
     if draft and settings.get("draft_appearance", "geometry") == "geometry":
         return save_draft_graph(graph, mesh, asset, job, details, paths)
     texture_vae = graph.add("VAELoader", vae_name=model_name("texture_vae"))
@@ -847,7 +854,7 @@ def export_recipe(asset, job, kind, master_id):
     return graph, details, [f"{kind.capitalize()} export uses saved native data. No image or reconstruction model is loaded."]
 
 
-def single_image_mesh_recipe(snapshot: dict, prepared: dict, attempt_id: str) -> dict:
+def single_image_mesh_recipe(snapshot: dict, prepared: dict, attempt_id: str, geometry_only=False) -> dict:
     primary = approved_primary(snapshot)
     current = approved_primary(prepared)
     if (current["id"], current["sha256"]) != (primary["id"], primary["sha256"]):
@@ -860,7 +867,9 @@ def single_image_mesh_recipe(snapshot: dict, prepared: dict, attempt_id: str) ->
     asset["settings"]["mesh_backend"] = "pixal_single"
     requested = asset["settings"]["mesh_requested_seed"]
     asset["settings"]["mesh_seed"] = asset["settings"]["seed"] if requested < 0 else int(requested)
-    graph, details, bindings = mesh_recipe(asset, {"id": attempt_id})
+    if geometry_only:
+        asset["settings"].update(mesh_refine_steps=20,shape_resolution=asset.get("pipeline",{}).get("settings",{}).get("shape_resolution",1024))
+    graph, details, bindings = mesh_recipe(asset, {"id": attempt_id}, geometry_only=geometry_only)
     details["primary_image"] = {key: primary[key] for key in ("id", "file", "sha256")}
     return {"graph": graph.nodes, "details": details, "bindings": bindings}
 

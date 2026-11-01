@@ -160,6 +160,24 @@ class AgentJobTests(unittest.IsolatedAsyncioTestCase):
         await asyncio.gather(*list(self.engine.tasks.values()), return_exceptions=True)
         self.assertEqual(self.engine.get(self.project["id"], resumed["id"])["prompt_ids"], [])
 
+    async def test_retry_retains_the_material_session_and_variant_payload(self):
+        first=self.engine.start(self.project['id'],self.project['revision'],'apply_materials','material1',{'session_id':'session1'})
+        self.engine.cancel(self.project['id'],first['id'])
+        await asyncio.gather(*list(self.engine.tasks.values()),return_exceptions=True)
+        saved=self.library.load(self.project['id'])
+        resumed=self.engine.start(saved['id'],saved['revision'],'apply_materials','retry-material1',{'resume_job_id':first['id']})
+        self.assertEqual(self.engine._job(saved['id'],resumed['id'])['payload'].get('session_id'),'session1')
+
+    async def test_geometry_stage_uses_mesh_seed_instead_of_image_seed(self):
+        project=self.library.update_project(self.project['id'],self.project['revision'],{'settings':{'requested_seed':77,'mesh_requested_seed':42}})
+        captured=[]
+        self.engine.build_stage=lambda project,snapshot,stage,job:(captured.append(snapshot['settings']['seed']) or {'graph':{'1':{'class_type':'TestOutput','inputs':{}}}})
+        job=self.engine.start(project['id'],project['revision'],'finish_mesh','seed-check',{})
+        saved=self.library.load(project['id']);saved['jobs'][-1]['stages'][0]['name']='geometry';self.library.save(saved)
+        await asyncio.wait_for(self.events.get(),1)
+        self.assertEqual(captured,[42])
+        self.engine.cancel(project['id'],job['id'])
+
 
 if __name__ == "__main__":
     unittest.main()

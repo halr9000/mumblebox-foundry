@@ -1,9 +1,11 @@
 import {app} from "../../../scripts/app.js";
 import {api} from "../../../scripts/api.js";
 import {request, PREFIX, connectVisibleClient} from "./job-client.js";
-import {openImageEditor} from "./image-editor.js";
+import {openImageEditor} from "./image-editor.js?v=20261023-cutout";
 import {downloadProgress} from "./creator.js";
 import {CivitaiBrowser} from "./civitai-browser.js";
+import {renderMeshPipeline} from "./mesh-pipeline.js";
+import {modelUsageRows} from "./model-usage.js";
 
 const names = {source:"Source image",design:"Chosen design",mesh_input:"Image for the mesh",
     reference_front:"Front reference",reference_back:"Back reference",reference_left:"Left reference",reference_right:"Right reference"};
@@ -11,6 +13,13 @@ const refs = Object.keys(names).filter(k=>k.startsWith("reference_"));
 const active = job=>job && ["running","queued"].includes(job.state);
 const delay = ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const clone = value=>JSON.parse(JSON.stringify(value));
+const brandLogo = new URL("./assets/mumblebox-star.png",import.meta.url).href;
+const modelUses = {sdxl_base:"Flexible styles and a mature LoRA library.",sdxl_juggernaut:"Photographic rendering with SDXL LoRAs.",
+    qwen21:"Detailed descriptions and multiple references.",qwen2511:"Instruction-based edits to an existing image.",
+    klein4:"Fast image creation and editing.",klein4_base:"More sampling control than the four-step version.",
+    klein_distilled:"Larger four-step model; uses more memory.",klein_base:"Larger model with adjustable sampling.",
+    klein_kv:"Reference editing with cached image features.",flux3_base:"Full descriptions with adjustable sampling.",
+    flux3_distilled:"Create or edit with a full image description."};
 function el(tag, attrs={}, ...children) {
     const node=document.createElement(tag);
     for(const [key,value] of Object.entries(attrs)) {
@@ -40,7 +49,7 @@ function controlStyles() {
         id:"mumblebox-civitai-styles",rel:"stylesheet",href:new URL("./civitai-browser.css",import.meta.url).href}));
 }
 
-class SingleImageControls {
+export class SingleImageControls {
     constructor(node) {
         styles();
         controlStyles();
@@ -64,7 +73,7 @@ class SingleImageControls {
     dispose() {
         this.civitai.dispose();
         clearInterval(this.timer);this.disconnect();api.removeEventListener("progress",this.onProgress);
-        this.viewer?.remove();this.viewerResize?.disconnect();this.root.remove();
+        this.viewerInteractionCleanup?.();this.viewer?.remove();this.viewerResize?.disconnect();this.root.remove();
         if(app.mumbleboxSingle===this)app.mumbleboxSingle=null;
     }
     async showStageGraph(graph) {
@@ -96,7 +105,10 @@ class SingleImageControls {
     url(record,download=false) {return `${PREFIX}${this.path(`/artifacts/${record.id}`)}${download?"?download=1":""}`;}
     fileURL(file) {return `/asset-workshop/file/${this.project.id}?path=${encodeURIComponent(file)}`;}
     current(role) {const slot=this.project.images[role];return slot.revisions.find(r=>r.id===slot.current);}
-    status(message,error=false) {this.notice=message;this.hasError=error;if(this.noticeNode){this.noticeNode.textContent=message;this.noticeNode.classList.toggle("error",error);}}
+    status(message,error=false) {
+        this.notice=error?message:"";this.hasError=error;
+        if(this.noticeNode){this.noticeNode.textContent=this.notice;this.noticeNode.hidden=!error;}
+    }
     async action(callback) {
         this.busy=true;
         try {await callback();} catch(error) {this.status(error.message,true);if(error.status===409) await this.refresh();}
@@ -113,17 +125,98 @@ class SingleImageControls {
     imageBlocked() {
         const profiles=this.capabilities.profiles,sdxl=profiles[this.project.profile].lora.architecture==="sdxl";
         const mismatch=this.project.loras.find(l=>l.enabled!==false&&(Number(l.strength)!==0||sdxl&&Number(l.strength_clip??l.strength)!==0)&&
-            l.profile!==this.project.profile&&!(sdxl&&profiles[l.profile]?.lora.architecture==="sdxl"));
-        return this.blocked()||(mismatch?`LoRA ${mismatch.name} is declared for another model variant. Disable it or choose compatible weights in Style & LoRAs.`:"");
+            !this.loraMatches(l.name));
+        return this.blocked()||(mismatch?`A saved LoRA does not match this model. Choose a compatible Style / LoRA or None.`:"");
+    }
+    loraMatches(name,profile=this.project.profile) {
+        const local=(this.loraList.items||[]).find(item=>item.name===name);
+        if(local)return local.profiles.includes(profile);
+        // A local but unidentified file must never inherit a download's identity.
+        if((this.loraList.files||[]).includes(name))return false;
+        return (this.loraList.downloadable||[]).some(item=>item.name===name&&item.profiles?.includes(profile));
     }
     loraOptions() {
-        const options=Object.fromEntries(this.loraList.files.map(file=>[file,file]));
-        if(this.capabilities.profiles[this.project.profile].lora.architecture==="sdxl")
-            for(const item of this.loraList.downloadable||[])if(item.family==="sdxl"&&!(item.name in options))
+        const options=Object.fromEntries((this.loraList.items||[]).filter(item=>this.loraMatches(item.name)).map(item=>[item.name,item.name]));
+        for(const item of this.loraList.downloadable||[])if(this.loraMatches(item.name)&&!(item.name in options))
                 options[item.name]=`${item.name} — optional first-use download`;
         return options;
     }
+    async selectImageProfile(profile) {
+        await this.loraQueue?.catch(()=>{});
+        this.loraSearch="";
+        const loras=this.project.loras.map(item=>({...item,profile:this.loraMatches(item.name,profile)?profile:item.profile,
+            enabled:item.enabled!==false&&this.loraMatches(item.name,profile)}));
+        const disabled=this.project.loras.filter((item,i)=>item.enabled!==false&&!loras[i].enabled).length;
+        await this.save({profile,loras});
+        if(disabled)this.status(`${disabled} LoRA${disabled===1?" was":"s were"} turned off because ${disabled===1?"it does":"they do"} not match the selected model.`);
+    }
+    setLoraEnabled(name,enabled) {
+        const projectId=this.project.id,profile=this.project.profile;
+        const pending=(this.loraQueue||Promise.resolve()).catch(()=>{}).then(async()=>{
+            await this.saveQueue;
+            if(this.project.id!==projectId||this.project.profile!==profile)throw Error("The model or job changed. Select the LoRA again.");
+            if(enabled&&!this.loraMatches(name))throw Error("Choose a LoRA compatible with the selected image model.");
+            const values=clone(this.project.loras),existing=values.find(item=>item.name===name);
+            if(existing){existing.enabled=enabled;if(enabled)existing.profile=profile;}
+            else if(enabled)values.push({name,profile,strength:1,strength_clip:1,enabled:true,
+                trigger:(this.loraList.downloadable||[]).find(item=>item.name===name)?.trigger||""});
+            await this.save({loras:values});
+        });
+        this.loraQueue=pending;return pending;
+    }
     loadLocalLoras() {return request("/loras");}
+    loraHelp(name) {
+        const source=(this.civitai.installed||[]).find(item=>item.kind==="LORA"&&item.relative_path?.replaceAll("\\","/")===name.replaceAll("\\","/"));
+        const download=(this.loraList.downloadable||[]).find(item=>item.name===name);
+        const notes=typeof source?.notes==="string"?source.notes.trim().slice(0,12000):"";
+        const triggers=(Array.isArray(source?.triggers)?source.triggers:download?.trigger?[download.trigger]:[])
+            .filter(value=>typeof value==="string"&&value.trim()).slice(0,20).map(value=>value.slice(0,200));
+        return {title:source?.model_name||name.split(/[\\/]/).pop(),notes,triggers,
+            creator:source?.creator,baseModel:source?.base_model,license:source?.license,
+            sourceURL:source?.source_url,licenseURL:source?.license_url,guide:source?.guide,
+            permissions:source?.permissions};
+    }
+    loraHelpControl(label,info) {
+        const id=`lora-guide-${crypto.randomUUID()}`;
+        let pinned=false,timer;
+        const tip=el("div",{id,popover:"auto",class:"lora-tooltip",role:"tooltip",tabIndex:0},el("strong",{},info.title||label));
+        if(info.creator||info.baseModel)tip.append(el("p",{class:"lora-provenance"},[info.creator?`By ${info.creator}`:"",info.baseModel].filter(Boolean).join(" · ")));
+        tip.append(el("p",{},info.notes||"No author description has been saved for this file."));
+        const details=el("dl",{class:"lora-guide-details"});
+        if(info.triggers.length)details.append(el("dt",{},"Trigger words"),el("dd",{},info.triggers.join(", ")));
+        for(const [title,text] of Object.entries(info.guide||{}).slice(0,12))if(typeof text==="string")details.append(el("dt",{},title),el("dd",{},text));
+        if(info.license)details.append(el("dt",{},"License"),el("dd",{},info.license));
+        for(const [label,value] of modelUsageRows(info.permissions))details.append(el("dt",{},label),el("dd",{},value));
+        if(details.children.length)tip.append(details);
+        const links=el("div",{class:"row"});
+        for(const [title,url] of [["Author’s page",info.sourceURL],["License & usage",info.licenseURL]]) {
+            if(typeof url==="string"&&/^https:\/\//i.test(url))links.append(el("a",{href:url,target:"_blank",rel:"noopener noreferrer"},title));
+        }
+        if(links.children.length)tip.append(links);
+        const close=()=>{clearTimeout(timer);pinned=false;if(tip.matches(":popover-open"))tip.hidePopover();};
+        const open=()=>{
+            clearTimeout(timer);if(!tip.isConnected)return;
+            if(!tip.matches(":popover-open"))tip.showPopover();
+            const rect=button.getBoundingClientRect(),width=Math.min(320,innerWidth-24);
+            tip.style.width=`${width}px`;tip.style.maxHeight=`${Math.max(100,Math.min(300,innerHeight-24))}px`;
+            const height=tip.getBoundingClientRect().height,below=innerHeight-rect.bottom-12;
+            tip.style.left=`${Math.max(12,Math.min(rect.right-width,innerWidth-width-12))}px`;
+            tip.style.top=`${Math.max(12,Math.min(below>=height?rect.bottom+5:rect.top-height-5,innerHeight-height-12))}px`;
+        };
+        const leave=()=>{clearTimeout(timer);timer=setTimeout(()=>{
+            if(!pinned&&document.activeElement!==button&&!tip.contains(document.activeElement)&&!tip.matches(":hover"))close();
+        },160);};
+        const button=el("button",{type:"button",class:"lora-info","aria-label":`About ${label}`,"aria-controls":id,"aria-expanded":"false",
+            onpointerenter:event=>{if(event.pointerType==="mouse")open();},onpointerleave:leave,onfocus:open,onblur:leave,
+            onclick:event=>{event.stopPropagation();if(pinned)close();else{pinned=true;open();}}},"?");
+        tip.addEventListener("pointerenter",()=>clearTimeout(timer));tip.addEventListener("pointerleave",leave);
+        tip.addEventListener("focusin",()=>clearTimeout(timer));tip.addEventListener("focusout",leave);
+        tip.addEventListener("toggle",()=>{
+            const shown=tip.matches(":popover-open");button.setAttribute("aria-expanded",String(shown));
+            if(shown)button.setAttribute("aria-describedby",id);else{button.removeAttribute("aria-describedby");pinned=false;}
+        });
+        return el("span",{class:"lora-info-wrap"},button,tip);
+    }
     async resetModelDefaults() {
         const settings={steps:null,cfg:null};
         if(this.capabilities.profiles[this.project.profile].lora.architecture==="sdxl")Object.assign(settings,{
@@ -136,8 +229,8 @@ class SingleImageControls {
         field.onchange=()=>{if(!field.checkValidity()){field.reportValidity();return;}this.action(()=>onchange(field.value));};
         return el("label",{class:"field"},el("span",{},label),field);
     }
-    text(label,value,onchange) {
-        return el("label",{class:"field"},el("span",{},label),el("textarea",{value:value||"",disabled:!!this.blocked(),"data-control":label,onchange:event=>this.action(()=>onchange(event.target.value))}));
+    text(label,value,onchange,hideLabel=false) {
+        return el("label",{class:"field"},el("span",{class:hideLabel?"visually-hidden":""},label),el("textarea",{value:value||"",disabled:!!this.blocked(),"data-control":label,onchange:event=>this.action(()=>onchange(event.target.value))}));
     }
     select(label,values,value,onchange) {
         return el("label",{class:"field"},el("span",{},label),el("select",{disabled:!!this.blocked(),"data-control":label,onchange:event=>this.action(()=>onchange(event.target.value))},
@@ -163,8 +256,16 @@ class SingleImageControls {
         const reset=this.button("Reset",()=>onchange(resetValue),this.blocked(),"control-reset");
         reset.title=`Reset ${label.toLowerCase()} to ${defaultValue}${unit}`;reset.setAttribute("aria-label",reset.title);
         return el("div",{class:"range-control"},el("div",{class:"range-title"},el("span",{},label),
+            el("span",{class:"range-default"},`Default ${defaultValue}${unit}`),
             help?el("details",{class:"control-help"},el("summary",{"aria-label":`Help for ${label}`},"?"),el("p",{},help,` Default: ${defaultValue}${unit}.`)):null),
-            el("div",{class:"range-values"},slider,number),el("div",{class:"range-footer"},el("span",{},`Default ${defaultValue}${unit}`),reset));
+            el("div",{class:"range-values"},slider,number,reset));
+    }
+    numericSetting(label,value,onchange,{min,max,step,defaultValue,help}) {
+        const input=this.input(label,value,v=>onchange(Number(v)),{type:"number",min,max,step,required:true,"aria-label":`${label} value`});
+        input.classList.add("numeric-setting");
+        const explanation=el("details",{class:"control-help"},el("summary",{"aria-label":`Help for ${label}`},"?"),el("p",{},help));
+        input.firstElementChild.append(explanation);
+        return el("div",{class:"numeric-setting-group"},input,el("span",{class:"setting-default"},`Default ${defaultValue}`));
     }
     lastImageSeed() {
         const records=Object.values(this.project.images).flatMap(slot=>slot.revisions).filter(r=>Number.isSafeInteger(r.recipe?.seed)&&r.recipe.seed>=0);
@@ -193,16 +294,17 @@ class SingleImageControls {
         const reuse=this.button("Reuse seed",()=>this.setSeedMode("fixed"),this.blocked(),seed>=0?"selected":"");
         const random=this.button("Random each time",()=>this.setSeedMode("randomize"),this.blocked(),seed<0?"selected":"");
         for(const [button,on] of [[random,seed<0],[reuse,seed>=0]])button.setAttribute("aria-pressed",String(on));
-        return el("section",{class:"seed-panel","aria-label":"Image seed"},el("div",{class:"seed-heading"},el("h4",{},"Image seed"),
-            el("div",{class:"segmented",role:"group","aria-label":"Image seed behavior"},random,reuse)),
-            this.grid(2,el("div",{},this.input("Seed to reuse",seed>=0?seed:"",v=>this.save({settings:{requested_seed:Number(v),seed_mode:"fixed"}}),
-                {type:"number",min:0,max:Number.MAX_SAFE_INTEGER,step:1,required:true,placeholder:"Choose Reuse seed or shuffle"}),
-                this.hint(seed<0?"A new seed is chosen when generation starts.":"This seed will be reused until you change it.")),
-                el("div",{class:"seed-last"},el("span",{},"Latest image seed"),el("strong",{},last??"No generated image yet"),
-                    this.hint("The same seed helps repeat an attempt; changes to the model or settings can still change the result."))),
-            el("div",{class:"row"},this.button("Shuffle seed",()=>this.shuffleSeed(),this.blocked()),
-                this.button("Use latest image seed",()=>this.reuseLastSeed(),this.blocked()||(last===undefined?"Generate an image to record its actual seed.":"")),
-                this.button("Copy seed",()=>this.copySeed(),seed<0&&last===undefined?"No seed to copy yet.":"","quiet")));
+        const input=seed>=0?this.input("Seed to reuse",seed,v=>this.save({settings:{requested_seed:Number(v),seed_mode:"fixed"}}),
+            {type:"number",min:0,max:Number.MAX_SAFE_INTEGER,step:1,required:true}):null;
+        input?.classList.add("seed-value");
+        return el("section",{class:"seed-panel","aria-label":"Image seed"},el("div",{class:"seed-line"},el("h4",{},"Seed"),
+            el("div",{class:"segmented",role:"group","aria-label":"Image seed behavior"},random,reuse),input,
+            this.button("Shuffle",()=>this.shuffleSeed(),this.blocked(),"quiet"),
+            seed>=0?this.button("Copy seed",()=>this.copySeed(),"","quiet"):null),
+            last===undefined?null:el("div",{class:"seed-last"},el("span",{},"Last used: ",el("strong",{},String(last))),
+                this.button("Reuse last",()=>this.reuseLastSeed(),this.blocked(),"text-button"),
+                this.button("Copy last",async()=>{await navigator.clipboard.writeText(String(last));this.status(`Seed ${last} copied.`);},"","text-button")),
+            this.help("How seeds work","Random chooses a new seed for each image. Reuse keeps the same number; the model, prompt and settings also affect the result. Shuffle chooses a new number to reuse without generating an image."));
     }
     async refresh() {if(this.project)this.project=await request(this.path());}
     async save(changes,expected=null) {
@@ -221,7 +323,7 @@ class SingleImageControls {
     }
     async start(kind,payload={}) {
         await this.saveQueue;await this.refresh();this.nativeProgress=null;
-        const stages=kind==="build_mesh_package"?["image","mesh"]:kind==="prepare_foreground"?["prepare"]:kind==="finish_mesh"?[]:["image"];
+        const stages=["texture_mesh","prepare_variant","prepare_material_guide","apply_materials"].includes(kind)?[]:kind==="build_geometry"?["image","mesh"]:kind==="build_mesh_package"?["image","mesh"]:kind==="prepare_foreground"?["prepare"]:kind==="finish_mesh"?[]:["image"];
         for(const stage of stages) if(!await this.downloadModels(stage,kind))
             throw Error("Required model files are missing. Follow the download setup, then retry this action. No generation was started.");
         this.job=await request(this.path("/jobs"),{expected_revision:this.project.revision,kind,request_key:crypto.randomUUID(),payload});
@@ -292,6 +394,8 @@ class SingleImageControls {
             }
         }
         this.updateDownloadRecovery();
+        this.updateDescriptionStatus();
+        this.updateWorkingIndicator();
         if(this.helperBusy) this.updateProgress();
     }
     openModelConnection() {
@@ -341,6 +445,7 @@ class SingleImageControls {
         }
     }
     updateProgress() {
+        this.updateWorkingIndicator();
         if(!this.progressNode) return;
         this.progressNode.hidden=!this.job&&!this.helperBusy;
         const helperPhase=this.resources?.description_helper?.phase;
@@ -355,17 +460,21 @@ class SingleImageControls {
         const scroll=this.root.scrollTop,focused=this.root.contains(document.activeElement)?document.activeElement:null;
         const focusKey=focused?.dataset?.control,selection=focused&&["textarea","input"].includes(focused.localName)&&focused.type!=="number"?{start:focused.selectionStart,end:focused.selectionEnd}:null;
         const expanded=new Set([...this.root.querySelectorAll("details[open]")]
-            .map(detail=>detail.querySelector(":scope > summary")?.textContent));
-        this.viewer?.remove();this.viewer=null;this.viewerResize?.disconnect();
+            .map(detail=>detail.dataset.disclosure||detail.querySelector(":scope > summary")?.textContent));
+        this.viewerInteractionCleanup?.();this.viewer?.remove();this.viewer=null;this.viewerResize?.disconnect();
         this.root.replaceChildren();
-        this.root.append(el("header",{class:"brand"},el("span",{class:"brand-mark","aria-hidden":"true"},"M"),el("div",{},el("h2",{},"Mumblebox"),el("p",{class:"muted"},"3D game & print asset studio · Image to mesh & agent package"))));
+        this.root.append(el("header",{class:"brand"},el("span",{class:"brand-mark","aria-hidden":"true"},
+            el("img",{src:brandLogo,alt:"",width:40,height:40})),
+            el("div",{},el("h2",{},"Mumblebox"),el("p",{class:"muted"},"3D game & print asset studio"))));
         this.resourceNode=el("span");
         const navigation=el("div",{class:"control-navigation"});this.root.append(navigation);
-        navigation.append(el("div",{class:"stats"},this.resourceNode,this.button("Free RAM & VRAM",async()=>{const result=await request("/release",{});this.status(`Model release: ${result.status||"completed"}.`);},this.blocked(),"unload-models")));
+        this.workingNode=el("span",{class:"working-indicator","aria-hidden":"true"},this.activityIcon());
+        this.workingLabel=el("span",{class:"working-label",role:"status","aria-live":"polite",hidden:true});
+        navigation.append(el("div",{class:"stats"},this.resourceNode,this.workingLabel,this.button("Free RAM & VRAM",async()=>{const result=await request("/release",{});this.status(`Model release: ${result.status||"completed"}.`);},this.blocked(),"unload-models")));
         this.root.querySelector(".unload-models").title="Unload Comfy models to release their RAM and VRAM. This does not close other programs or stop another workflow.";
         const tabs=["Create image","Approve image","Mesh & agent package","History","Integrations","Settings"];
         const labels=["Create image","Prepare for 3D","Mesh & export","History","Integrations","Settings"];
-        navigation.append(el("nav",{class:"tabs","aria-label":"Mumblebox steps"},tabs.map((name,index)=>el("button",{
+        navigation.append(el("nav",{class:"tabs","aria-label":"Mumblebox steps"},this.workingNode,tabs.map((name,index)=>el("button",{
             ...(this.tab===name?{"aria-current":"step"}:{}),onclick:()=>{this.tab=name;this.render();this.root.scrollTop=0;if(name==="History")this.loadHistory();}},index<3?`${index+1}. ${labels[index]}`:name))));
         this.phaseNode=el("div");this.meter=el("progress");
         this.progressNode=el("section",{class:"job-progress","aria-live":"polite"},this.phaseNode,this.meter,
@@ -374,7 +483,7 @@ class SingleImageControls {
                 else this.job=await request(this.path(`/jobs/${this.job.id}/cancel`),{});
             },active(this.job)||this.helperBusy?"":"No active job."),
             this.button("Retry unfinished stages",()=>this.start(this.job.kind,{resume_job_id:this.job.id}),this.job&&["failed","cancelled","interrupted"].includes(this.job.state)?"":"Retry is available after an interrupted or failed job.")));
-        this.noticeNode=el("div",{class:`status ${this.hasError?"error":""}`,role:"status"},this.notice);
+        this.noticeNode=el("p",{class:"action-error",role:"alert",hidden:!this.hasError},this.hasError?this.notice:"");
         this.downloadRecoveryNode=el("section",{class:"content help-panel",role:"alert","aria-label":"Model download recovery",hidden:true});
         this.downloadRecoveryKey=null;
         this.inlineDownloadText=el("div");this.inlineDownloadMeter=el("progress");
@@ -388,7 +497,7 @@ class SingleImageControls {
         else if(this.tab==="Integrations") this.civitai.render(content);
         else {this.historyNode=content;content.append(this.hint("Loading saved jobs…"));queueMicrotask(()=>this.loadHistory());}
         for(const detail of this.root.querySelectorAll("details"))
-            if(expanded.has(detail.querySelector(":scope > summary")?.textContent))detail.open=true;
+            if(expanded.has(detail.dataset.disclosure||detail.querySelector(":scope > summary")?.textContent))detail.open=true;
         this.updateProgress();this.updateResources();
         this.root.scrollTop=scroll;
         if(focusKey) {
@@ -399,23 +508,27 @@ class SingleImageControls {
     }
     modelGuide() {
         return el("details",{class:"help-panel model-guide"},el("summary",{},"What model should I use?"),
-            this.hint("Compare what each model supports. Choosing one loads its starting settings; adjust them in Image settings below."),
-            el("div",{class:"model-guide-grid"},Object.values(this.capabilities.profiles).map(info=>
-                el("article",{class:"model-choice"},el("h4",{},info.label),el("p",{},info.help.purpose),
-                    el("dl",{},el("dt",{},"Starting image"),el("dd",{},info.source_required?"Required":"Optional — text alone is supported"),
-                        el("dt",{},"References"),el("dd",{},`Up to ${info.max_references} selected images`),
-                        el("dt",{},"Starting settings"),el("dd",{},`${info.defaults.steps} steps · CFG ${info.defaults.cfg}`),
-                        el("dt",{},"License"),el("dd",{},el("a",{href:info.license.url,target:"_blank",rel:"noopener noreferrer"},info.license.label)))))));
+            this.hint("Choose a model above. Open a row here to compare its capabilities."),
+            el("div",{class:"model-guide-list"},Object.entries(this.capabilities.profiles).map(([key,info])=>
+                el("details",{class:"model-choice",name:`model-help-${this.project.id}`},
+                    el("summary",{},el("strong",{},info.label),el("span",{},modelUses[key]||info.help.purpose.split(". ")[0]+".")),
+                    el("div",{class:"model-choice-detail"},this.hint(info.help.purpose),
+                        el("ul",{},el("li",{},el("strong",{},"Starting image: "),info.source_required?"Required":"Optional"),
+                            el("li",{},el("strong",{},"References: "),`Up to ${info.max_references}`)),
+                        el("a",{href:info.license.url,target:"_blank",rel:"noopener noreferrer"},info.license.label))))));
     }
     modelControls(content) {
         const profiles=this.capabilities.profiles,info=profiles[this.project.profile],settings=this.project.settings;
-        content.append(this.panel("Image settings",`${info.label} · settings apply to the next image.`,
-            this.grid(3,
-                this.range("Steps",settings.steps??info.defaults.steps,v=>this.setting("steps",v),{min:1,max:150,step:1,defaultValue:info.defaults.steps,resetValue:null,help:info.help.steps}),
-                this.range("CFG / guidance",settings.cfg??info.defaults.cfg,v=>this.setting("cfg",v),{min:.1,max:30,step:.1,defaultValue:info.defaults.cfg,resetValue:null,help:info.help.cfg}),
+        const controls=this.panel("Image model settings",null,
+            el("div",{class:"sampling-controls"},
+                this.numericSetting("Steps",settings.steps??info.defaults.steps,v=>this.setting("steps",v),{min:1,max:150,step:1,defaultValue:info.defaults.steps,help:info.help.steps}),
+                this.numericSetting("CFG / guidance",settings.cfg??info.defaults.cfg,v=>this.setting("cfg",v),{min:.1,max:30,step:.1,defaultValue:info.defaults.cfg,help:info.help.cfg}),
                 this.select("Image size",Object.fromEntries([...new Set([512,768,1024,1536,2048,settings.resolution])].sort((a,b)=>a-b).map(n=>[n,`${n} px`])),settings.resolution,v=>this.setting("resolution",Number(v)))),
-            this.hint("Larger images use more memory. More steps or stronger guidance do not guarantee better geometry."),this.seedControls(),
-            el("div",{class:"row"},this.button("Reset model defaults",()=>this.resetModelDefaults(),this.blocked(),"quiet"))));
+            this.hint("Larger images use more memory. More steps or guidance do not always improve results."),this.seedControls());
+        controls.classList.add("image-settings");
+        const heading=controls.querySelector(".panel-heading");heading.classList.add("settings-heading");
+        heading.append(el("span",{class:"hint"},info.label),this.button("Reset model defaults",()=>this.resetModelDefaults(),this.blocked(),"quiet"));
+        content.append(controls);
         const sdxl=info.lora.architecture==="sdxl";
         if(sdxl)content.append(this.disclosure("SDXL references, sampling & editing",
             this.text("Negative prompt — optional",settings.sdxl_negative_prompt||"",value=>this.setting("sdxl_negative_prompt",value)),
@@ -429,58 +542,90 @@ class SingleImageControls {
                 this.range("Image-to-image change strength",settings.sdxl_img2img_denoise??.65,v=>this.setting("sdxl_img2img_denoise",v),{min:0,max:1,step:.05,defaultValue:.65,help:"Controls how much to redraw when reworking the first source. Higher values allow more change."}),
                 this.range("Masked edit change strength",settings.sdxl_edit_denoise??.85,v=>this.setting("sdxl_edit_denoise",v),{min:0,max:1,step:.05,defaultValue:.85,help:"Controls redraw inside the mask. The edited result is composited over the original to preserve the area outside your selection."})),
             this.hint("Preparing a 3D input and generating agent references always use appearance conditioning so the composition can change. SDXL references do not reliably interpret separate instructions for each picture.")));
-        const loras=el("div",{class:"lora-list"});
-        for(const [index,lora] of this.project.loras.entries()) {
-            const update=async changes=>{const values=clone(this.project.loras);Object.assign(values[index],changes);await this.save({loras:values});};
-            loras.append(el("article",{class:"lora-card"},el("header",{class:"panel-heading inline-heading"},el("h4",{},`LoRA ${index+1}`),
-                this.check("Enabled",lora.enabled!==false,v=>update({enabled:v})),this.button("Remove LoRA",()=>this.save({loras:this.project.loras.filter((_,i)=>i!==index)}),this.blocked(),"quiet danger")),
-                this.grid(2,this.select("LoRA file",this.loraOptions(),lora.name,v=>update({name:v,...(sdxl?{trigger:(this.loraList.downloadable||[]).find(item=>item.name===v)?.trigger||""}:{})})),
-                    this.select("Declared compatible variant",Object.fromEntries(Object.entries(profiles).map(([k,v])=>[k,v.label])),lora.profile,v=>update({profile:v}))),
-                this.grid(sdxl?2:1,this.range(`LoRA ${index+1} strength`,lora.strength,v=>update({strength:v}),{min:-2,max:2,step:.05,defaultValue:1,help:"Controls the model contribution. Match the LoRA to its declared model variant. Zero model and text strengths disable all effects."}),
-                    ...(sdxl?[this.range(`LoRA ${index+1} text encoder strength`,lora.strength_clip??lora.strength,v=>update({strength_clip:v}),{min:-2,max:2,step:.05,defaultValue:1,help:"Controls LoRA weights for the text encoder when the file includes them."})]:[])),
-                this.input("Trigger words",lora.trigger,v=>update({trigger:v}))));
+    }
+    loraControls() {
+        const sdxl=this.capabilities.profiles[this.project.profile].lora.architecture==="sdxl",options=this.loraOptions();
+        const enabled=this.project.loras.map((lora,index)=>({lora,index})).filter(({lora})=>lora.enabled!==false&&this.loraMatches(lora.name));
+        const update=async(index,changes)=>{const values=clone(this.project.loras);Object.assign(values[index],changes);await this.save({loras:values});};
+        const display=name=>name.split(/[\\/]/).pop().replace(/\.(safetensors|ckpt|pt)$/i,"");
+        const selector=el("details",{class:"model-field lora-stack","data-disclosure":"style-loras"},
+            el("summary",{},"Style / LoRAs ",el("span",{class:"lora-count"},enabled.length?`${enabled.length} active`:"Optional")));
+        const body=el("div",{class:"lora-body"},el("div",{class:"lora-heading"},el("span",{},"Compatible with this model"),
+            this.button("Refresh",async()=>{this.loraList=await request("/loras/refresh",{});await this.civitai.loadInstalled();},this.blocked(),"text-button")));
+        selector.append(body);
+        const list=el("div",{class:"lora-picker",role:"group","aria-label":"Compatible LoRAs",tabIndex:0,
+            onscroll:()=>{for(const tip of list.querySelectorAll(":popover-open"))tip.hidePopover();}});
+        const filter=()=>{const query=(this.loraSearch||"").toLowerCase();for(const row of list.children)row.hidden=!row.dataset.name.toLowerCase().includes(query);};
+        if(Object.keys(options).length>5)body.append(el("input",{type:"search",class:"lora-search",placeholder:"Search compatible LoRAs…",
+            "aria-label":"Search compatible LoRAs","data-control":"LoRA search",value:this.loraSearch||"",oninput:event=>{this.loraSearch=event.target.value;filter();}}));
+        for(const [name,label] of Object.entries(options)) {
+            const help=this.loraHelp(name);
+            list.append(el("div",{class:"lora-choice-row","data-name":name},this.loraHelpControl(display(name),help),el("label",{class:"lora-choice",title:label},
+                el("input",{type:"checkbox",checked:enabled.some(item=>item.lora.name===name),disabled:!!this.blocked(),"data-control":`LoRA ${name}`,
+                    onchange:event=>this.action(()=>this.setLoraEnabled(name,event.target.checked))}),el("span",{},display(name)),
+                label.includes("first-use download")?el("small",{},"Download"):null)));
         }
-        const sample=sdxl?(this.loraList.downloadable||[]).find(item=>item.family==="sdxl"):null;
-        content.append(this.disclosure(`Style & LoRAs (${this.project.loras.length})`,this.hint(info.help.lora),loras,
-            el("div",{class:"row"},this.button("Add LoRA",()=>this.save({loras:[...this.project.loras,{name:sample?.name||this.loraList.files[0],profile:this.project.profile,strength:1,strength_clip:1,enabled:!sdxl,trigger:sample?.trigger||""}]}),
-                this.blocked()||(!Object.keys(this.loraOptions()).length?"Put a compatible LoRA in this Comfy installation's models/loras folder, then refresh.":"")),
-                this.button("Refresh LoRA files",async()=>{this.loraList=await request("/loras");},this.blocked(),"quiet"),
-                this.button("Browse more LoRAs",()=>this.civitai.open("LORA"),"","quiet")),
-            sdxl?this.hint("New SDXL LoRAs start disabled. Choose the file and trigger words, then enable it. The optional pixel-art example downloads only if you choose to use it."):null));
+        if(Object.keys(options).length){body.append(list);filter();}
+        else body.append(this.hint("No compatible LoRAs installed for this model."));
+        if(enabled.length)body.append(el("div",{class:"lora-selected-heading"},`${enabled.length} selected`));
+        for(const [position,{lora,index}] of enabled.entries()) {
+            const remove=this.button("×",()=>this.setLoraEnabled(lora.name,false),this.blocked(),"lora-remove");
+            remove.setAttribute("aria-label",`Remove ${display(lora.name)}`);remove.title=`Remove ${display(lora.name)}`;
+            const row=el("div",{class:"lora-selected"},el("div",{class:"lora-selected-title"},el("strong",{title:lora.name},display(lora.name)),remove));
+            const strength=this.range(`LoRA ${position+1} strength`,lora.strength,v=>update(index,{strength:v}),{min:-2,max:2,step:.05,defaultValue:1});
+            strength.querySelector('.range-title>span').textContent="Strength";row.append(strength);
+            const trigger=this.input(`LoRA ${position+1} trigger words`,lora.trigger,v=>update(index,{trigger:v}));trigger.firstElementChild.textContent="Trigger words";
+            const extras=[trigger];
+            if(sdxl)extras.push(this.numericSetting(`LoRA ${position+1} text strength`,lora.strength_clip??lora.strength,v=>update(index,{strength_clip:v}),
+                {min:-2,max:2,step:.05,defaultValue:1,help:"Changes matching text encoder layers when the file includes them."}));
+            const detail=this.disclosure(`LoRA ${position+1} options`,...extras);detail.classList.add("lora-settings");row.append(detail);body.append(row);
+        }
+        if(this.project.loras.some(lora=>lora.enabled!==false&&!this.loraMatches(lora.name)))body.append(el("div",{class:"lora-mismatch",role:"alert"},
+            "A saved LoRA does not match this model. ",this.button("Turn it off",()=>this.save({loras:this.project.loras.map(l=>({...l,enabled:l.enabled!==false&&this.loraMatches(l.name)}))}),this.blocked(),"text-button")));
+        if(this.loraList.unidentified)body.append(this.hint(`${this.loraList.unidentified} unidentified file${this.loraList.unidentified===1?" is":"s are"} hidden until model compatibility can be verified.`));
+        return {selector,detail:null};
     }
     renderCreate(content) {
         const sources=this.project.sources.filter(s=>s.enabled!==false&&!s.cleared),profile=this.capabilities.profiles[this.project.profile];
-        const imageReason=this.imageBlocked()||(profile.source_required&&!sources.length?"Upload at least one reference for Qwen Edit 2511.":
+        const imageReason=this.generatingImage?"Starting image generation…":this.imageBlocked()||(profile.source_required&&!sources.length?"Upload at least one reference for Qwen Edit 2511.":
             !this.project.prompt.trim()&&!sources.length?"Write a description or upload a reference image first.":"");
         content.append(el("div",{class:"step-heading"},el("div",{},el("h3",{},"Start with an idea or an image"),
-            this.hint("Describe your asset, upload reference pictures, or do both. The result is one image to review before making a mesh."))));
-        const jobActions=el("div",{class:"row job-actions"},
-            this.button("New clean job",async()=>{this.project=await request("/projects",{});this.job=null;this.notice="Start with a description or upload an image.";},this.blocked(),"quiet"),
-            this.button("Clear all images",()=>this.confirmClear(),this.blocked(),"quiet danger"));
+            this.hint("Describe your asset, add optional references, then generate one image."))));
+        const newJob=this.button("Start Over",async()=>{this.project=await request("/projects",{});this.job=null;this.notice="";this.descriptionMessage=null;},this.blocked(),"quiet start-over");
+        newJob.title=this.blocked()||"Start a fresh asset. Your current job remains in History.";
         const category=this.select("Asset type",{props:"Prop",characters:"Character",creatures:"Creature",vehicles:"Vehicle",environment:"Environment piece"},this.project.category,v=>this.save({category:v}));
-        const model=el("div",{},this.select("Image model / variant",Object.fromEntries(Object.entries(this.capabilities.profiles).map(([k,v])=>[k,v.label])),this.project.profile,profile=>this.save({profile})),
-            el("div",{class:"row"},this.button("Browse more models",()=>this.civitai.open("Checkpoint"),"","quiet")));
-        const metadata=this.panel("Your asset",null,this.grid(3,this.input("Job name",this.project.name,v=>this.save({name:v})),category,model),
-            this.grid(2,this.help("What asset type should I choose?","Prop: tools, furniture and manufactured objects.\nCharacter: clothed people or humanoids.\nCreature: animals and nonhuman anatomy.\nVehicle: ships, cars and moving machines.\nEnvironment piece: buildings, terrain, plants or scenery.\nThis changes the instructions used to preserve anatomy, parts or structure."),this.modelGuide()),
-            el("div",{class:"model-summary"},this.hint(`${profile.label}: ${profile.defaults.steps} steps · CFG ${profile.defaults.cfg} by default.`),
-                el("a",{href:profile.license.url,target:"_blank",rel:"noopener noreferrer"},profile.license.label+" — details")));
-        metadata.querySelector(".panel-heading").classList.add("inline-heading");metadata.querySelector(".panel-heading").append(jobActions);content.append(metadata);
+        const assetHelp=el("details",{class:"help-panel asset-help"},el("summary",{},"What asset type should I choose?"),
+            el("ul",{},...[ ["Prop","tools, furniture and manufactured objects"],["Character","clothed people or humanoids"],
+                ["Creature","animals and nonhuman anatomy"],["Vehicle","ships, cars and moving machines"],
+                ["Environment piece","buildings, terrain, plants or scenery"] ].map(([name,description])=>el("li",{},el("strong",{},name+": "),description))),
+            this.hint("Guides instructions for anatomy, parts and structure."));
+        const model=el("div",{class:"model-field"},
+            this.select("Image model",Object.fromEntries(Object.entries(this.capabilities.profiles).map(([k,v])=>[k,v.label])),this.project.profile,profile=>this.selectImageProfile(profile)),
+            el("div",{class:"model-note"},el("span",{},modelUses[this.project.profile]||""),
+                el("a",{class:"model-license",href:profile.license.url,target:"_blank",rel:"noopener noreferrer"},"License & usage")),this.modelGuide());
+        const loras=this.loraControls();
+        const metadata=el("section",{class:"control-panel asset-setup","aria-label":"Your asset"},
+            el("div",{class:"identity-row"},this.input("Job name",this.project.name,v=>this.save({name:v})),newJob),
+            el("div",{class:"identity-row asset-type-row"},category),assetHelp,
+            el("div",{class:"model-pair"},model,loras.selector),
+            el("div",{class:"model-browser-action"},this.button("Browse for more Model Checkpoints and Loras",()=>this.civitai.open(),"","text-button")));
+        content.append(metadata);
         const installedModels=this.civitai.installed.filter(item=>item.kind==="Checkpoint"&&(item.profile===this.project.profile||item.family==="sdxl"&&this.project.profile.startsWith("sdxl")));
-        if(installedModels.length||this.project.settings.image_checkpoint)content.append(this.panel("Checkpoint for the next image",null,
-            this.select("Checkpoint weights",{"":"Official model for this variant",...Object.fromEntries(installedModels.map(item=>[item.file_id,`${item.model_name} · ${item.version_name}`]))},this.project.settings.image_checkpoint||"",value=>this.setting("image_checkpoint",value)),
-            this.hint("The model variant above supplies prompting and sampling defaults. An imported checkpoint supplies compatible image weights.")));
+        if(installedModels.length||this.project.settings.image_checkpoint)model.append(this.select("Model weights",{"":"Official weights",...Object.fromEntries(installedModels.map(item=>[item.file_id,`${item.model_name} · ${item.version_name}`]))},this.project.settings.image_checkpoint||"",value=>this.setting("image_checkpoint",value)));
+        this.descriptionStatusNodes=[];
         const enhance=this.button("Enhance description",()=>this.describe("enhance"),this.blocked()||(!this.project.prompt.trim()?"Write a description first.":""));
         enhance.title="Replace this text using the selected model's guidance. Undo restores your description.";
         const descriptionTools=el("div",{class:"row description-tools"},enhance);
         const undo=this.descriptionUndo;
         if(undo?.projectId===this.project.id&&undo.enhanced===this.project.prompt)
-            descriptionTools.append(this.button("Undo description change",async()=>{await this.save({prompt:undo.previous});this.descriptionUndo=null;},this.blocked(),"quiet"));
+            descriptionTools.append(this.button("Undo",async()=>{await this.save({prompt:undo.previous});this.descriptionUndo=null;this.descriptionMessage=null;},this.blocked(),"quiet"));
         const describe=this.button("Auto Describe my image",()=>this.describe("describe"),this.blocked()||(!this.current("source")?"Upload a source image first.":""));
         describe.title="Describe the latest upload directly in the description box. Undo is available. The local assistant may need a first-use download.";
         const referenceArea=el("div",{class:"reference-input"},el("h4",{},profile.source_required?"Reference images — required":"Reference images — optional"),
             this.hint(profile.source_required?"This editing model needs at least one starting picture.":"Text alone is enough. Add pictures to guide shape, detail or style."),
-            el("div",{class:"row upload-actions"},this.button("Upload reference images",()=>this.upload("source",true),this.blocked()),describe),
-            this.hint("Auto Describe writes into the description box. It uses the latest upload."));
+            el("div",{class:"row upload-actions"},this.button("Upload references",()=>this.upload("source",true),this.blocked()),describe,
+                this.project.sources.some(s=>!s.cleared)?this.button("Clear all images",()=>this.confirmClear(),this.blocked(),"quiet danger"):null),
+            this.descriptionStatus("describe"));
         const cards=el("div",{class:"cards source-cards"});
         for(const source of this.project.sources) {
             if(source.cleared)continue;
@@ -489,38 +634,107 @@ class SingleImageControls {
                 this.input("What should this reference contribute?",source.instructions||"",value=>this.save({source_details:{[source.id]:{instructions:value}}})));
             cards.append(card);
         }
-        if(!cards.childNodes.length)referenceArea.append(el("div",{class:"upload-placeholder"},el("strong",{},"No reference image needed to start"),this.hint("Uploads stay at their original resolution. A suitable picture can also go directly to the approval step.")));
+        if(!cards.childNodes.length)referenceArea.append(el("div",{class:"upload-placeholder"},this.hint("Use photos or artwork to guide the result. A ready-to-use image can also go straight to Prepare for 3D.")));
         const cleared=this.project.sources.filter(source=>source.cleared);
         if(cleared.length)referenceArea.append(this.disclosure("Previously cleared references",this.hint("Restore a reference only if you want to use it again."),
             ...cleared.map((source,index)=>this.button(`Restore reference ${index+1}`,()=>this.save({source_selection:[...sources.map(r=>r.id),source.id]}),this.blocked()))));
-        content.append(this.panel("Describe it or show it",null,el("div",{class:"starting-grid"},el("div",{class:"description-input"},
-            this.text("Describe the object you want",this.project.prompt,v=>this.save({prompt:v})),descriptionTools,
-            this.hint(`Enhance follows ${profile.label} guidance and replaces the text above. Undo is available.`)),referenceArea),cards.childNodes.length?cards:null,
+        const description=this.text("Object description",this.project.prompt,v=>this.save({prompt:v}),true);
+        description.querySelector("textarea").addEventListener("input",event=>{
+            const empty=!event.target.value.trim();
+            enhance.disabled=!!this.blocked()||empty;
+            const reason=this.generatingImage?"Starting image generation…":this.imageBlocked()||
+                (profile.source_required&&!sources.length?"Upload at least one reference for Qwen Edit 2511.":
+                empty&&!sources.length?"Write a description or upload a reference image first.":"");
+            for(const button of this.root.querySelectorAll(".generate-image")) {
+                button.disabled=!!reason;button.title=reason;
+                button.parentElement.querySelector(".action-copy .hint").textContent=reason||"Creates one image to review before making a mesh.";
+            }
+        });
+        content.append(this.panel("Describe the object to create a starting image, or upload images to use as reference.",null,el("div",{class:"starting-grid"},el("div",{class:"description-input"},
+            description,descriptionTools,
+            this.descriptionStatus("enhance")),referenceArea),cards.childNodes.length?cards:null));
+        content.append(this.generateAction(imageReason,true),
             this.disclosure("Unseen details & instructions for the agent",this.text("Specific details for unseen sides / agent instructions",this.project.design_notes,v=>this.save({design_notes:v})),
-                this.hint("These notes guide the generated design references and agent handoff. Pixal3D sees only the approved image; a detail written only here is not guaranteed to appear in the mesh."))));
+                this.hint("These notes guide the design references and agent handoff. Pixal3D sees only the approved image, so details written only here may not appear in the mesh.")));
         this.modelControls(content);
-        content.append(el("div",{class:"action-bar"},this.button("Generate image",()=>this.start("create_image"),imageReason,"primary"),
-            this.hint(imageReason||"Creates one image using your description, references and settings. It does not start a mesh.")));
+        content.append(this.generateAction(imageReason));
         const design=this.current("design");
         if(design)content.append(this.panel("Your generated image","Edit this image, prepare a clearer 3D input, or use it directly if it already shows the whole object.",
             this.imageCard("design",design),el("div",{class:"row"},this.button("Prepare image for 3D",()=>{this.tab="Approve image";return this.start("three_quarter");},this.imageBlocked(),"primary"),
                 this.button("Use this image directly",()=>this.adopt("design",design),this.blocked()))));
         else {const saved=this.savedImages("design");if(saved)content.append(saved);}
     }
+    activityIcon() {
+        return el("span",{class:"activity-star","aria-hidden":"true"},el("img",{src:brandLogo,alt:"",width:20,height:20}));
+    }
+    updateWorkingIndicator() {
+        if(!this.workingNode)return;
+        const downloading=this.resources?.download?.status==="running"||["running","queued","pausing","cancelling"].includes(this.civitai?.download?.status);
+        const phase=this.job?.phase||"",kind=this.job?.kind||"";
+        const stage=/reference|image|three.quarter/i.test(phase)?"Rendering image":/export|package|archive/i.test(phase)?"Exporting assets":
+            /finish|decimat|simplif/i.test(phase)||kind==="finish_mesh"?"Finishing mesh":/mesh|structure|shape|texture/i.test(phase)||kind==="build_mesh_package"?"Rendering mesh":"Rendering image";
+        const label=this.helperBusy?(downloading?"Downloading assistant…":this.descriptionAction==="describe"?"Describing image…":"Enhancing description…"):
+            downloading?"Downloading asset…":active(this.job)?`${stage}…`:this.generatingImage?"Preparing image…":"";
+        this.workingNode.dataset.busy=String(!!label);
+        if(this.workingLabel){this.workingLabel.hidden=!label;this.workingLabel.textContent=label;}
+        this.workingNode.title=this.job?.phase||this.resources?.description_helper?.phase||label;
+    }
+    generateAction(reason,advanced=false) {
+        const running=this.generatingImage||active(this.job)&&this.job.kind==="create_image";
+        const button=this.button("Generate image",()=>this.generateImage(),reason,"primary generate-image");
+        if(running){button.prepend(this.activityIcon());button.disabled=true;button.setAttribute("aria-busy","true");}
+        return el("div",{class:"action-bar"},button,el("div",{class:"action-copy"},this.hint(reason||"Creates one image to review before making a mesh."),
+            advanced?el("a",{href:"#",onclick:event=>{event.preventDefault();const target=this.root.querySelector('.image-settings');target?.scrollIntoView({block:"start"});target?.querySelector('input')?.focus({preventScroll:true});}},"See advanced settings below."):null));
+    }
+    async generateImage() {
+        if(this.generatingImage||this.blocked())return;
+        this.generatingImage=true;
+        this.updateWorkingIndicator();
+        for(const button of this.root.querySelectorAll('.generate-image')) {button.disabled=true;button.setAttribute("aria-busy","true");button.prepend(this.activityIcon());}
+        try {await this.start("create_image");}
+        finally {this.generatingImage=false;this.updateWorkingIndicator();}
+    }
+    descriptionStatus(action) {
+        const node=el("div",{class:"description-status",role:"status","aria-live":"polite",hidden:true});
+        this.descriptionStatusNodes.push({node,action});return node;
+    }
+    updateDescriptionStatus() {
+        for(const {node,action} of this.descriptionStatusNodes||[]) {
+            const current=this.descriptionAction===action,working=current&&this.helperBusy,message=current?this.descriptionMessage:null;
+            node.hidden=!working&&!message;if(node.hidden)continue;
+            node.classList.toggle("error",!!message?.error);node.setAttribute("aria-busy",String(!!working));
+            if(!working){node.replaceChildren(message.text);continue;}
+            const download=this.resources?.download,helper=this.resources?.description_helper;
+            const progress=download?.request?.kind==="description"&&download.status==="running"?downloadProgress(download):null;
+            const text=progress?`Downloading description assistant · ${progress.message}`:
+                helper?.phase&&helper.phase!=="idle"?helper.phase:action==="enhance"?"Enhancing your description…":"Describing your image…";
+            if(!node.querySelector('.activity-star'))node.replaceChildren(this.activityIcon(),el("span",{class:"description-phase"}));
+            node.querySelector('.description-phase').textContent=text;
+            let meter=node.querySelector('progress');
+            if(progress?.progress?.max){
+                if(!meter){meter=el("progress",{"aria-label":"Description assistant download"});node.append(meter);}
+                meter.max=progress.progress.max;meter.value=progress.progress.value;
+            }else meter?.remove();
+        }
+    }
     async describe(action) {
-        const previous=this.project.prompt,projectId=this.project.id;
-        this.helperBusy=true;this.render();
-        let result;
-        try {result=await request(this.path("/describe"),{expected_revision:this.project.revision,action});}
+        if(this.helperBusy)return;
+        this.helperBusy=true;this.descriptionAction=action;this.descriptionMessage=null;this.render();this.updateDescriptionStatus();
+        try {
+            await this.saveQueue;
+            const previous=this.project.prompt,projectId=this.project.id;
+            const result=await request(this.path("/describe"),{expected_revision:this.project.revision,action});
+            if(this.project.id!==projectId)throw Error("The current job changed. Its description was not replaced.");
+            await this.save({prompt:result.text},result.input_revision);
+            this.descriptionUndo={projectId,previous,enhanced:result.text};
+            this.descriptionMessage={text:"Description updated. Undo is available."};
+        }
         catch(error) {
-            if(error.message.includes("Description assistant stopped")) {this.status("Description assistant stopped. Your description was not changed.");return;}
+            if(error.message.includes("Description assistant stopped")) {this.descriptionMessage={text:"Stopped. Your description was not changed."};return;}
+            this.descriptionMessage={text:error.message,error:true};
             throw error;
         }
-        finally {this.helperBusy=false;this.render();}
-        if(this.project.id!==projectId)throw Error("The current job changed. Its description was not replaced.");
-        await this.save({prompt:result.text},result.input_revision);
-        this.descriptionUndo={projectId,previous,enhanced:result.text};
-        this.status("Description updated. Undo description change restores the previous text.");this.render();
+        finally {this.helperBusy=false;this.render();this.updateDescriptionStatus();}
     }
     async upload(role,multiple=false) {
         const picker=el("input",{type:"file",accept:"image/png,image/jpeg,image/webp",multiple});
@@ -563,7 +777,7 @@ class SingleImageControls {
             el("div",{class:"row"},this.link("Download image",this.url(record,true)),
                 this.button("Edit image",()=>this.edit(role,record),this.blocked()),
                 this.button("Clear this image",()=>this.post("/images/clear",{role,revision_id:record.id}),this.blocked(),"quiet danger")));
-        if(role==="source") card.append(this.button("Use this image for the mesh",()=>this.adopt(role,record),this.blocked()));
+        if(role==="source") card.append(this.button("Prepare this image for 3D",()=>this.adopt(role,record),this.blocked()));
         const alternatives=this.project.images[role].revisions.filter(r=>!r.recipe?.edit||r.edit_accepted);
         if(role!=="source"&&alternatives.length>1)card.append(this.select("Saved image revision",Object.fromEntries(alternatives.map(r=>[r.id,
             `${new Date((r.created||0)*1000).toLocaleString()} · seed ${r.recipe?.seed??"uploaded"} · ${r.review?.decision||"unreviewed"}`])),record.id,
@@ -581,7 +795,7 @@ class SingleImageControls {
     }
     async review(role,record,decision,notes) {
         await this.post("/reviews",{role,revision_id:record.id,sha256:record.sha256,decision,notes,reviewer:"user"});
-        this.status(role==="mesh_input"?"Image review saved. Only this one image will enter Pixal3D.":"Reference review saved. This image is for the receiving agent, not reconstruction.");
+        if(role==="mesh_input"&&["approved","approved_with_notes"].includes(decision))await this.cutout();
     }
     renderApprove(content) {
         const image=this.current("mesh_input"),design=this.current("design");
@@ -593,10 +807,7 @@ class SingleImageControls {
             this.hint("Keep the whole object in frame. Check proportions, thin parts and any missing features before approval.")));
         if(design&&!image)content.append(this.panel("Use your current design",null,this.imageCard("design",design),
             this.button("Use this design directly for the mesh",()=>this.adopt("design",design),this.blocked(),"primary")));
-        if(image)content.append(this.imageCard("mesh_input",image),this.panel("Check the foreground","Remove the background and inspect the cutout before reconstruction. The mask editor can keep missing pieces or erase unwanted background.",
-            this.button("Remove background / review cutout",()=>this.cutout(),this.blocked())),
-            el("div",{class:"action-bar"},this.button("Continue to mesh & export",()=>{this.tab="Mesh & agent package";this.root.scrollTop=0;},this.project.images.mesh_input.approved===image.id?"":"Approve the image above first.","primary"),
-                this.hint(this.project.images.mesh_input.approved===image.id?"This exact image is approved. The next step builds the mesh.":"Approve the image or approve it with notes to continue.")));
+        if(image)content.append(this.imageCard("mesh_input",image));
         else {content.append(el("div",{class:"empty"},"No mesh input selected. Prepare a view, upload a suitable image, or choose your existing design."));const saved=this.savedImages("mesh_input");if(saved)content.append(saved);}
     }
     async edit(role,record) {
@@ -618,25 +829,33 @@ class SingleImageControls {
             },accept:async revision=>{await this.refresh();await this.post("/edits/accept",{role,revision_id:revision.id});this.render();}});
     }
     async cutout() {
-        const record=this.current("mesh_input");
-        if(!record.foreground) {await this.waitJob(await this.start("prepare_foreground",{role:"mesh_input"}));}
-        const image=this.current("mesh_input"),foreground=image.foreground;
-        await openImageEditor({element:el,sourceURL:this.url(image),initialMaskURL:this.fileURL(foreground.mask_file),title:"Image for the mesh",model:"Foreground mask",mode:"foreground",
-            download:()=>this.link("Download cutout",this.fileURL(foreground.cutout_file)+"&download=1"),progress:()=>null,stop:async()=>{},
+        const image=this.current("mesh_input");
+        await openImageEditor({element:el,sourceURL:this.url(image),initialMaskURL:image.foreground?this.fileURL(image.foreground.mask_file):null,
+            prepareMask:image.foreground?null:async()=>{
+                await this.waitJob(await this.start("prepare_foreground",{role:"mesh_input"}));
+                return this.fileURL(this.current("mesh_input").foreground.mask_file);
+            },title:"Image for the mesh",model:"Foreground mask",mode:"foreground",
+            keepLabel:"Keep Cutout and Continue to Create Mesh",
+            download:()=>this.link("Download original",this.url(image,true)),progress:()=>({message:this.job?.phase,progress:this.nativeProgress}),
+            stop:async()=>{if(active(this.job))await request(this.path(`/jobs/${this.job.id}/cancel`),{});},
             generate:async selection=>{
                 const data=new FormData();data.append("slot","mesh_input");data.append("revision",image.id);data.append("feather",selection.feather);data.append("mask",selection.mask);
                 const response=await api.fetchApi(`/asset-workshop/assets/${this.project.id}/foreground`,{method:"POST",body:data});const result=await response.json();
                 if(!response.ok)throw Error(result.error);
                 return {...result,url:this.fileURL(result.cutout_file),download:this.link("Download cutout",this.fileURL(result.cutout_file)+"&download=1")};
-            },accept:async candidate=>{await legacy(`/assets/${this.project.id}/foreground/accept`,{slot:"mesh_input",candidate:candidate.id});await this.refresh();this.render();}});
+            },accept:async candidate=>{
+                await legacy(`/assets/${this.project.id}/foreground/accept`,{slot:"mesh_input",candidate:candidate.id});
+                await this.refresh();this.tab="Mesh & agent package";this.root.scrollTop=0;this.render();
+            }});
     }
-    renderMesh(content) {
+    renderMesh(content) {return renderMeshPipeline(this,content,el);}
+    renderLegacyMesh(content) {
         const approved=this.current("mesh_input")&&this.project.images.mesh_input.approved===this.current("mesh_input").id;
         content.append(el("div",{class:"step-heading"},el("div",{},el("h3",{},"Build, inspect and export"),
-            this.hint("Build one mesh from your approved image, then review the extra reference pictures and export a package for your coding agent."))));
-        content.append(this.panel("Build your asset","Pixal3D receives only the approved image, without the text prompt. The four extra pictures guide the receiving agent; they are not measured views and do not enter reconstruction.",
+            this.hint("Build a mesh from your prepared image, inspect it, then download it or open it in Blender."))));
+        content.append(this.panel("Build your asset","The mesh is reconstructed from your prepared image. Four additional pictures show the intended design; they are not measured views and do not enter reconstruction.",
             el("div",{class:"action-bar"},this.button("Generate mesh & reference images",()=>this.start("build_mesh_package"),this.imageBlocked()||(!approved?"Approve one image on step 2 first.":""),"primary"),
-                this.hint(approved?"Runs reconstruction, GPU finishing and the four agent reference pictures.":"First choose and approve your mesh input in Prepare for 3D."))));
+                this.hint(approved?"Creates the mesh and four design reference pictures.":"First choose and approve your mesh input in Prepare for 3D."))));
         const master=[...this.project.artifacts].reverse().find(a=>a.kind==="master"&&!a.stale);
         const mesh=[...this.project.artifacts].reverse().find(a=>a.kind==="mesh"&&a.export_kind==="master"&&!a.stale);
         const game=[...this.project.artifacts].reverse().find(a=>a.kind==="mesh"&&a.export_kind==="game"&&!a.stale&&a.master===mesh?.master);
@@ -658,23 +877,50 @@ class SingleImageControls {
         const cards=el("div",{class:"cards"});
         for(const role of refs) {const image=this.current(role);cards.append(image?this.imageCard(role,image):el("article",{class:"card"},el("h4",{},names[role]),this.hint("No current reference."),this.savedImages(role),this.button("Generate reference",()=>this.start("reference_view",{role}),this.imageBlocked()||(!approved?"Approve the mesh image first.":""))));}
         const reviewed=refs.filter(role=>this.current(role)&&this.project.images[role].approved===this.current(role).id).length;
-        content.append(this.panel(`Agent reference pictures · ${reviewed} of 4 reviewed`,"These pictures describe the intended design. They can disagree with the mesh or invent details. Keep useful ones and add notes for the receiving agent.",cards));
-        const ready=mesh&&reviewed===4;
-        content.append(this.panel("Export for your coding agent","The ZIP includes one mesh, its exact input image, four reviewed design references, actual parameters and dimensions, and instructions about what to keep, repair or rebuild.",
-            this.text("Custom instructions for the receiving agent",this.project.target.user_instructions,value=>this.save({target:{user_instructions:value}})),
-            el("div",{class:"action-bar"},this.button("Create agent package (.zip)",async()=>{await request(this.path("/packages"),{expected_revision:this.project.revision,artifact_ids:[mesh.id,...(game?[game.id]:[])]});await this.refresh();this.status("Agent package created and checked. Download it below.");},this.blocked()||(!ready?"Finish a mesh and review all four references first. The mesh can be downloaded independently.":""),"primary"),
-                this.hint(ready?"The mesh and all four references are ready for the package.":`Review ${4-reviewed} remaining reference${4-reviewed===1?"":"s"}${!mesh?" and finish a mesh":""} to enable the package. The mesh download is available independently.`))));
-        for(const artifact of this.project.artifacts.filter(a=>a.kind==="package"&&!a.stale))content.append(el("div",{class:"row"},this.link("Download agent package",this.url(artifact,true))));
+        content.append(this.disclosure(`Reference pictures · ${reviewed} of 4 reviewed`,this.hint("Optional design references. Their review status is saved with the export."),cards));
+        content.append(this.panel("Export asset","Download the mesh, source image, available references and settings together, or open the mesh in Blender.",
+            this.disclosure("Export notes (optional)",this.text("Notes for you, a collaborator or a coding agent",this.project.target.user_instructions,value=>this.save({target:{user_instructions:value}}))),
+            el("div",{class:"action-bar"},this.button("Download asset (.zip)",()=>this.exportAsset(mesh,game),this.blocked()||(!mesh?"Finish a mesh first.":""),"primary"),
+                this.button("Open in Blender",async()=>{await this.saveQueue;await request(this.path("/blender"),{expected_revision:this.project.revision,artifact_id:mesh.id});},this.blocked()||(!mesh?"Finish a mesh first.":"")))));
+        for(const artifact of this.project.artifacts.filter(a=>a.kind==="package"&&!a.stale))content.append(el("div",{class:"row"},this.link("Download saved ZIP",this.url(artifact,true))));
+    }
+    async exportAsset(mesh,game) {
+        await this.saveQueue;
+        const artifact=await request(this.path("/packages"),{expected_revision:this.project.revision,artifact_ids:[mesh.id,...(game?[game.id]:[])],audience:"asset"});
+        await this.refresh();
+        const download=this.link("Download asset (.zip)",this.url(artifact,true));download.hidden=true;
+        document.body.append(download);download.click();download.remove();
     }
     async mountViewer(container,mesh) {
         if(!container.isConnected)return;
         const factory=window.comfyAPI?.createLoad3d?.createLoad3d;if(!factory)throw Error("The native Comfy 3D viewer has not loaded. The mesh download remains available.");
         const preview=await legacy(`/assets/${this.project.id}/preview`,{export:mesh.id});
         if(!container.isConnected)return;
-        const viewer=factory(container);this.viewer=viewer;
+        const viewer=factory(container);this.viewer=viewer;this.guardViewerDrag(viewer);
         this.viewerResize=new ResizeObserver(()=>viewer.handleResize());this.viewerResize.observe(container);
         container.addEventListener("pointerenter",()=>viewer.updateStatusMouseOnViewer(true));container.addEventListener("pointerleave",()=>viewer.updateStatusMouseOnViewer(false));
         await viewer.loadModel(preview.url);viewer.handleResize();viewer.fitToViewer();viewer.forceRender();
+    }
+    guardViewerDrag(viewer) {
+        this.viewerInteractionCleanup?.();
+        const controls=viewer.controlsManager?.controls;
+        if(!controls?.domElement)return;
+        controls.autoRotate=false;controls.enableDamping=false;
+        const surface=controls.domElement;
+        const release=event=>{
+            if(controls._pointers?.includes(event.pointerId))controls._onPointerUp(event);
+        };
+        const guard=event=>{
+            if(event.pointerType!=="touch"&&event.buttons===0){release(event);event.stopImmediatePropagation();}
+        };
+        const blur=()=>{for(const pointerId of [...(controls._pointers||[])])release(new PointerEvent("pointerup",{pointerId}));};
+        surface.addEventListener("pointermove",guard,true);
+        window.addEventListener("pointerup",release,true);window.addEventListener("pointercancel",release,true);window.addEventListener("blur",blur);
+        this.viewerInteractionCleanup=()=>{
+            surface.removeEventListener("pointermove",guard,true);
+            window.removeEventListener("pointerup",release,true);window.removeEventListener("pointercancel",release,true);window.removeEventListener("blur",blur);
+        };
+        blur();
     }
     confirmClear() {
         this.confirm("Clear all images?","This removes the current images and approval from this job. Saved revisions and earlier files remain in its History. Existing mesh results become out of date.","Clear all images",()=>this.post("/images/clear"));

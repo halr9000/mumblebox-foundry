@@ -1,6 +1,6 @@
 // Selection tools and review stay in this dialog while the visible graph executes.
 export async function openImageEditor({element:el, sourceURL, title, model, generate, accept, stop, progress, download,
-                                      mode="image", initialMaskURL=null}) {
+                                      mode="image", initialMaskURL=null, prepareMask=null, keepLabel=null}) {
     const foreground=mode==="foreground";
     document.querySelector(".aw-image-editor")?.remove();
     const source = new Image();
@@ -14,8 +14,8 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
     const context = canvas.getContext("2d"), selected = mask.getContext("2d");
     const operations = [];
     let initialMask=null;
-    if(initialMaskURL) {
-        const saved=new Image();saved.src=initialMaskURL;await saved.decode();
+    async function loadInitialMask(url) {
+        const saved=new Image();saved.src=url;await saved.decode();
         if(saved.naturalWidth!==mask.width || saved.naturalHeight!==mask.height)
             throw Error("The saved foreground does not match this image. Remove its background again.");
         initialMask=document.createElement("canvas");initialMask.width=mask.width;initialMask.height=mask.height;
@@ -26,6 +26,7 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
         }
         context.putImageData(pixels,0,0);operations.push({tool:"initial"});
     }
+    if(initialMaskURL)await loadInitialMask(initialMaskURL);
     let tool = "rectangle", stroke = null, polygon = [], busy = false, candidate = null;
     let resultImage = null, display = "selection", zoom = 1, cursor = null, phase = 0;
     const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -109,10 +110,10 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
     const zoomTools = el("div",{class:"row"},button("Zoom in",()=>{zoom=Math.min(4,zoom+.5);applyZoom();}),
         button("Zoom out",()=>{zoom=Math.max(1,zoom-.5);applyZoom();}),
         button("Fit image",()=>{zoom=1;applyZoom();}));
-    const generateButton = button(foreground?"Preview cutout":"Generate edit preview",()=>run(false),"primary");
+    const generateButton = button(foreground?"Remove Background":"Generate edit preview",()=>run(false),"primary");
     const retry = button("Try again",()=>run(true));
     retry.hidden=foreground;
-    const keep = button(foreground?"Keep cutout":"Keep this edit",async()=>{
+    const keep = button(keepLabel||(foreground?"Keep Cutout":"Keep this edit"),async()=>{
         if(!candidate || busy) return;
         busy=true;update();
         try {await accept(candidate);dialog.close();} catch(error){status.textContent=error.message;}
@@ -138,7 +139,7 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
                 el("p",{class:"hint"},foreground?"This changes transparency only. It does not redraw the object or load an image generator.":`Using ${model} and your current steps, CFG, seed and LoRAs. Try again uses a new seed.`),
                 status,progressBar,el("div",{class:"row"},generateButton,stopButton),
                 el("div",{class:"row"},keep,retry),
-                el("p",{class:"hint"},foreground?"Your saved foreground stays in use until you choose Keep cutout.":"Your original stays in use until you choose Keep this edit."),
+                el("p",{class:"hint"},foreground?"Your original image stays unchanged. Keeping the cutout saves its transparency.":"Your original stays in use until you choose Keep this edit."),
                 el("div",{class:"row"},download(),resultDownload))));
     document.body.append(dialog);
     const previousFocus = document.activeElement;
@@ -249,7 +250,7 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
         if(tools.polygon.textContent!==polygonLabel) labelButton(tools.polygon,polygonLabel,polygon.length?"finish":"polygon");
         generateButton.disabled=busy || !!polygon.length || !operations.length || (!foreground && !prompt.value.trim());
         retry.disabled=busy || !candidate;keep.disabled=busy || !candidate;cancel.disabled=busy;
-        stopButton.hidden=!busy || foreground;progressBar.hidden=!busy;prompt.disabled=width.disabled=feather.disabled=replaceDetail.disabled=busy;
+        stopButton.hidden=!busy || (foreground&&!prepareMask);progressBar.hidden=!busy;prompt.disabled=width.disabled=feather.disabled=replaceDetail.disabled=busy;
         brushControl.reset.disabled=softnessControl.reset.disabled=busy;
         canvas.style.cursor=display==="selection" && !busy?"none":"default";
         for(const b of comparisonButtons) {
@@ -303,7 +304,7 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
                 replaceDetail:replaceDetail.checked,random});
             candidate=result;resultImage=new Image();resultImage.src=result.url;await resultImage.decode();
             display="edited";paint();resultDownload.replaceChildren(result.download);
-            status.textContent=foreground?"Cutout preview ready. Check the edges and missing parts, then choose Keep cutout or return to Show selection.":`Preview ready. Seed used: ${result.recipe.seed}. Compare it with the original, then keep it or try again.`;
+            status.textContent=foreground?"Background removed. Keep the cutout to continue, or return to Show selection to adjust it.":`Preview ready. Seed used: ${result.recipe.seed}. Compare it with the original, then keep it or try again.`;
         } catch(error) {status.textContent=error.message;}
         finally {busy=false;update();}
     }
@@ -321,5 +322,11 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
     const resize=new ResizeObserver(applyZoom);
     dialog.showModal();resize.observe(viewport);rebuild();applyZoom();paint();update();
     if(foreground) canvas.focus();else prompt.focus();
+    if(foreground&&prepareMask) {
+        busy=true;update();status.textContent="Finding the object’s outline…";
+        try {await loadInitialMask(await prepareMask());rebuild();status.textContent="The highlighted area is kept. Adjust it if needed, then choose Remove Background.";}
+        catch(error){status.textContent=error.message;}
+        finally {busy=false;update();}
+    }
     return dialog;
 }

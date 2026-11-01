@@ -151,11 +151,12 @@ def resolve_file(model, version_id, file_id, profile, kind):
     size = max(0, int(float(size) * 1024)) if isinstance(size, (int, float)) else 0
     family = FAMILIES[profile]
     return {'model_id': positive_id(model.get('id')), 'version_id': version_id, 'file_id': file_id,
-            'profile': profile, 'family': family, 'kind': kind,
+            'profile': profile, 'family': family, 'kind': kind, 'usage_scope': 'initial_image',
             'category': 'loras' if kind == 'LORA' else 'checkpoints' if family == 'sdxl' else 'diffusion_models',
             'name': name, 'model_name': plain_text(model.get('name'), 180),
             'version_name': plain_text(version.get('name'), 180), 'base_model': version.get('baseModel'),
             'size_bytes': size, 'sha256': sha, 'download_url': url,
+            'source_provider': 'civitai', 'creator': plain_text((model.get('creator') or {}).get('username'), 100),
             'source_url': f'https://civitai.com/models/{model["id"]}?modelVersionId={version_id}',
             'triggers': [str(w)[:200] for w in version.get('trainedWords', [])[:20] if isinstance(w, str)],
             'notes': plain_text(version.get('description') or model.get('description')),
@@ -172,7 +173,7 @@ def normalize_model(model, profile, nsfw=False):
         images = []
         for img in version.get('images', [])[:12]:
             rating = img.get('nsfwLevel', 0)
-            mature = (isinstance(rating, (int, float)) and rating >= 4) or img.get('nsfw') not in (None, False, 'None')
+            mature = bool(model.get('nsfw')) or (isinstance(rating, (int, float)) and rating >= 4) or img.get('nsfw') not in (None, False, 'None')
             url = public_url(img.get('url'))
             if url and (nsfw or not mature) and img.get('type') != 'video':
                 images.append({'url': url, 'mature': mature})
@@ -237,7 +238,7 @@ class CatalogClient:
             params['cursor'] = str(cursor)[:512]
         data = self.get('/models', params)
         return {'items': [normalize_model(m, profile, nsfw) for m in data.get('items', [])[:12]
-                          if str(m.get('type', '')).casefold() == kind.casefold()],
+                          if str(m.get('type', '')).casefold() == kind.casefold() and (nsfw or not m.get('nsfw'))],
                 'next_cursor': data.get('metadata', {}).get('nextCursor')}
 
     def model(self, model_id):

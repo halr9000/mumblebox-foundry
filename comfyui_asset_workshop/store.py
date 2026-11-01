@@ -399,6 +399,80 @@ class AssetStore:
                            "scale_axis": "height", "user_instructions": ""},
             })
 
+    def update_pipeline(self, project_id, expected_revision, changes):
+        state_module = _pipeline_contracts()
+        checked = state_module.validate_settings(changes)
+        with LOCK:
+            data = self._checked_project(project_id, expected_revision)
+            state = state_module.initialize(data)
+            state["settings"].update(checked)
+            return self.save(data)
+
+    def select_pipeline_artifact(self, project_id, expected_revision, artifact_id):
+        with LOCK:
+            data = self._checked_project(project_id, expected_revision)
+            row = next((r for r in data["artifacts"] if r["id"] == identifier(artifact_id)), None)
+            if not row or row.get("stale") or row.get("kind") not in ("geometry", "mesh"):
+                raise ValueError("Choose a current geometry or appearance from this project")
+            path = self.path(project_id, row["file"])
+            if not path.is_file() or digest(path) != row["sha256"]:
+                raise ValueError("The recorded pipeline artifact changed on disk")
+            state = _pipeline_contracts().initialize(data)
+            state["selected_geometry_id" if row["kind"] == "geometry" else "selected_appearance_id"] = row["id"]
+            if row["kind"] == "geometry":
+                previous=next((a for a in data["artifacts"] if a["id"]==state.get("selected_appearance_id")),None)
+                if previous and previous.get("geometry_id")!=row["id"]:
+                    state.update(selected_texture_id=None,selected_appearance_id=None)
+            elif row.get("geometry_id"):
+                state["selected_geometry_id"]=row["geometry_id"]
+                ancestor=row;seen=set()
+                while ancestor and ancestor["id"] not in seen:
+                    seen.add(ancestor["id"])
+                    if ancestor.get("appearance_stage")=="texture":state["selected_texture_id"]=ancestor["id"];break
+                    ancestor=next((a for a in data["artifacts"] if a["id"]==ancestor.get("parent_artifact_id")),None)
+            return self.save(data)
+
+    def record_pipeline_artifact(self, project_id, stage_id, record):
+        with LOCK:
+            data = self._checked_project(project_id)
+            found = [(j,s) for j in data["jobs"] for s in j["stages"] if s["id"] == identifier(stage_id)]
+            if len(found) != 1: raise ValueError("Output must belong to one recorded pipeline stage")
+            job,stage = found[0]
+            if job.get("cancel_requested") or job["state"] not in ("queued", "running"):
+                raise JobConflict("This pipeline job no longer owns a running stage")
+            row = copy.deepcopy(record)
+            identifier(row["id"])
+            if row.get("kind") not in ("geometry","mesh"): raise ValueError("Unsupported pipeline artifact")
+            path = self.path(project_id, row["file"])
+            if not path.is_file() or digest(path) != row.get("sha256"):
+                raise ValueError("Pipeline output hash did not verify")
+            for parent_key in ("parent_artifact_id","geometry_id"):
+                parent_id = row.get(parent_key)
+                if parent_id:
+                    parent = next((a for a in data["artifacts"] if a["id"] == parent_id), None)
+                    if not parent or parent.get("stale"):
+                        raise ValueError("Pipeline parent is missing, stale or belongs to another project")
+                    parent_path = self.path(project_id, parent["file"])
+                    if not parent_path.is_file() or digest(parent_path) != parent["sha256"]:
+                        raise ValueError("Pipeline parent changed on disk")
+            existing = next((a for a in data["artifacts"] if a["id"] == row["id"]),None)
+            if existing:
+                if existing["sha256"] != row["sha256"]: raise ValueError("Immutable artifact identity conflict")
+                return copy.deepcopy(existing)
+            approved = job["snapshot"]["images"]["mesh_input"]["approved"]
+            row.update(job_id=job["id"],stage_id=stage_id,pipeline_version="validated_v1",
+                       source_revision_ids=[approved],stale=data["images"]["mesh_input"]["approved"]!=approved)
+            data["artifacts"].append(row);job["artifacts"].append(row["id"])
+            key="geometry" if row["kind"]=="geometry" else "appearance"
+            stage["result"]={**stage.get("result",{}),key:row["id"]}
+            if not row["stale"]:
+                state=_pipeline_contracts().initialize(data)
+                state["selected_geometry_id" if key=="geometry" else "selected_appearance_id"]=row["id"]
+                if key=="geometry":state.update(selected_texture_id=None,selected_appearance_id=None)
+                if row.get("appearance_stage")=="texture":state["selected_texture_id"]=row["id"]
+            self.save(data)
+            return copy.deepcopy(row)
+
     def _checked_project(self, project_id, expected_revision=None):
         data = self.load(project_id)
         if data.get("schema_version") != 2:
@@ -1196,3 +1270,16 @@ class AssetStore:
             for name in directories + files:
                 contained(folder, str(Path(current, name).relative_to(folder)))
         shutil.rmtree(folder)
+
+
+def _pipeline_contracts():
+    # Store is also used directly by the existing no-Comfy contract tests.
+    import importlib.util
+    import sys
+    name = "_mumblebox_pipeline_contracts"
+    if name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(name, Path(__file__).with_name("pipeline_state.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        sys.modules[name] = module
+    return sys.modules[name]

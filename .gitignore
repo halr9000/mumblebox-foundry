@@ -41,6 +41,7 @@ loras/
 .mcp-download-cache/
 
 # User data, generated assets, and runtime state
+.local/
 input/
 output/
 outputs/

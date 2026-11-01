@@ -1,0 +1,106 @@
+[
+  {
+    "id": "qwen21",
+    "name": "Qwen Image 2.1",
+    "creator": "Qwen team, Alibaba",
+    "stage": "Four-view turnaround",
+    "source": "https://huggingface.co/Qwen/Qwen-Image-2.1",
+    "observation": "Keeping a character recognizable across edited views gives the 3D stage a much stronger starting point."
+  },
+  {
+    "id": "qwen3vl",
+    "name": "Qwen3-VL",
+    "creator": "Qwen team, Alibaba",
+    "stage": "Image and text conditioning",
+    "source": "https://github.com/QwenLM/Qwen3-VL",
+    "observation": "Image understanding and language conditioning work together here to interpret the reference and turnaround instructions."
+  },
+  {
+    "id": "birefnet",
+    "name": "BiRefNet",
+    "creator": "Peng Zheng and collaborators",
+    "stage": "Subject separation",
+    "source": "https://github.com/ZhengPeng7/BiRefNet",
+    "observation": "Careful foreground separation helps preserve the silhouette before the image becomes geometry."
+  },
+  {
+    "id": "dinov3",
+    "name": "DINOv3",
+    "creator": "Meta AI and collaborators",
+    "stage": "Visual feature conditioning",
+    "source": "https://github.com/facebookresearch/dinov3",
+    "observation": "Reusable visual features let the geometry model work with structure across the reference views."
+  },
+  {
+    "id": "pixal3d",
+    "name": "Pixal3D",
+    "creator": "Tsinghua University, Tencent ARC Lab and Victoria University of Wellington",
+    "stage": "Multi-view geometry",
+    "source": "https://ldyang694.github.io/projects/pixal3d/",
+    "observation": "Its pixel-aligned approach gives image-to-3D correspondence a concrete geometric foundation."
+  },
+  {
+    "id": "hi3d",
+    "name": "Powered by Hi3D 1.0",
+    "creator": "Hi3D team",
+    "stage": "Image-guided mesh refinement",
+    "source": "https://www.hi3d.ai/",
+    "observation": "Refining an existing mesh lets us build on a useful shape instead of starting the geometry over."
+  },
+  {
+    "id": "trellis2",
+    "name": "TRELLIS.2",
+    "creator": "Microsoft Research",
+    "stage": "Shape decoding and final texturing",
+    "source": "https://github.com/microsoft/TRELLIS.2",
+    "observation": "Structured 3D representations bring detailed shape and appearance into the same generation pipeline."
+  },
+  {
+    "id": "comfyui",
+    "name": "ComfyUI",
+    "creator": "Comfy Org and community contributors",
+    "stage": "Workflow execution",
+    "source": "https://github.com/Comfy-Org/ComfyUI",
+    "observation": "Visible, connected stages make it possible to preserve successful work and improve one part at a time."
+  },
+  {
+    "id": "blender",
+    "name": "Blender",
+    "creator": "Blender Foundation and contributors",
+    "stage": "UVs, baking and authoring exports",
+    "source": "https://www.blender.org/",
+    "observation": "A capable open 3D toolset makes the final assets practical to inspect, edit and exchange."
+  },
+  {
+    "id": "quadriflow",
+    "name": "QuadriFlow via pyQuadriFlow",
+    "creator": "QuadriFlow researchers and wrapper contributors",
+    "stage": "Optional quad retopology",
+    "source": "https://github.com/hjwdzh/QuadriFlow",
+    "observation": "Automatic quad layouts give further modeling a useful starting structure; deformation still needs its own checks."
+  },
+  {
+    "id": "pymeshlab",
+    "name": "PyMeshLab",
+    "creator": "Visual Computing Lab, ISTI-CNR",
+    "stage": "Geometry processing and inspection",
+    "source": "https://github.com/cnr-isti-vclab/PyMeshLab",
+    "observation": "A mature set of mesh-processing filters helps turn geometry cleanup into measurable, repeatable steps."
+  },
+  {
+    "id": "meshlib",
+    "name": "MeshLib",
+    "creator": "MeshInspector contributors",
+    "stage": "Print-branch contact repair",
+    "source": "https://github.com/MeshInspector/MeshLib",
+    "observation": "Solid modeling tools help handle contact and repair cases that need more than a polygon reduction."
+  },
+  {
+    "id": "trellis_wrapper",
+    "name": "ComfyUI-Trellis2",
+    "creator": "visualbruno and contributors",
+    "stage": "Existing-mesh texture integration",
+    "source": "https://github.com/visualbruno/ComfyUI-Trellis2",
+    "observation": "This integration makes it possible to texture the geometry after our refinement and cleanup stages."
+  }
+]

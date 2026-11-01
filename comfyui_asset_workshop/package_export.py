@@ -14,21 +14,29 @@ import zipfile
 import numpy as np
 import trimesh
 
+from .pipeline_state import defaults as pipeline_defaults
 from .store import LOCK, ApprovalRequired, atomic_json, default_settings, digest, identifier
 
 SIDES = ("front", "back", "left", "right")
 MAPS = ("base_color.png", "normal_opengl.png", "metallic.png", "roughness.png", "occlusion.png")
 RECIPE_KEYS = ("profile", "steps", "cfg", "seed", "prompt", "task", "requested_view",
-               "loras", "lora_validation", "models", "checkpoint", "source_camera", "settings", "memory_preset_id", "preset_overrides")
+               "loras", "lora_validation", "models", "checkpoint", "source_camera", "settings", "memory_preset_id", "preset_overrides", "pipeline_version", "texture_provider", "variant", "material_model",
+               "material_model_revision", "material_settings", "material_assignments", "preservation", "optimization", "runtime_report")
 
 
 def recipe_parameters(recipe):
     result = {key: copy.deepcopy(recipe[key]) for key in RECIPE_KEYS if key in recipe}
     if "settings" in result:
-        allowed = set(default_settings()) | {"mesh_seed"}
+        allowed = set(default_settings()) | set(pipeline_defaults()) | {"mesh_seed"}
         result["settings"] = {key: value for key, value in result["settings"].items() if key in allowed}
     if "source_camera" in result:
         result["source_camera"].pop("record", None)
+    if "optimization" in result:
+        result["optimization"]={k:v for k,v in result["optimization"].items() if k not in ("source_texture","output","source_mesh")}
+    if "runtime_report" in result:
+        result["runtime_report"]={k:v for k,v in result["runtime_report"].items() if k not in ("output","source_mesh","source_texture")}
+    if "material_assignments" in result:
+        result["material_assignments"]={"version":1,"regions":[{k:v for k,v in r.items() if k in ("kind","id","name","prompt","strength","detail","tiles","metallic","enabled","selection_sha256","mask_id")} for r in result["material_assignments"].get("regions",[])]}
     return result
 
 
@@ -100,18 +108,64 @@ def agent_brief(manifest: dict) -> str:
         "manifest.json records image reviews, actual parameters, model/LoRA provenance, units and file checksums.\n")
 
 
-def create_package(library, project_id: str, expected_revision: int, artifact_ids: list[str]) -> dict:
+def include_resource_notices(folder, files):
+    root = Path(__file__).parent
+    notices = root / "licenses" / "pipeline"
+    for source in sorted(notices.iterdir()):
+        if source.is_file() and source.suffix in (".md", ".txt"):
+            destination = "licenses/" + source.name
+            output = folder / destination
+            output.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, output)
+            files[destination] = {"sha256": digest(output), "size_bytes": output.stat().st_size}
+    catalog = json.loads((root / "models.lock.json").read_text(encoding="utf-8"))
+    lines = ["# Resource and license index", "", "Powered by Hi3D 1.0 - http://hi3d.ai/", "",
+        "manifest.json records this asset's stage lineage, settings and material assignments. "
+        "This index lists resources supported by the integration, including optional resources; "
+        "a catalog entry alone does not establish that it was used for this asset. "
+        "Original or imported stages may have incomplete provenance.", "",
+        "The retained upstream notices are in licenses/. Consult the linked resource terms. "
+        "This index does not replace them or assign a new license to the generated asset.", "", "## Pipeline resources", ""]
+    for resource in catalog.get("pipeline_resources", []):
+        lines.append("- " + resource["id"] + ": " + resource.get("model", resource.get("source", "")) +
+            "; source: " + resource.get("source", "") + "; terms: " + resource.get("license_url", ""))
+    lines += ["", "## Image and initial-geometry model catalog", ""]
+    for key, resource in catalog.get("models", {}).items():
+        lines.append("- " + key + ": " + resource.get("repo", "") + "; revision: " + resource.get("revision", "unrecorded") +
+            "; terms: " + resource.get("license_url", ""))
+    index = folder / "RESOURCE-INDEX.md"
+    index.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    files[index.name] = {"sha256": digest(index), "size_bytes": index.stat().st_size}
+
+
+def create_package(library, project_id: str, expected_revision: int, artifact_ids: list[str], audience="agent") -> dict:
+    if audience not in ("asset", "agent"):
+        raise ValueError("Choose an asset or agent package.")
     with LOCK:
         project = copy.deepcopy(library._checked_project(project_id, expected_revision))
     if not isinstance(artifact_ids, list) or not artifact_ids:
         raise ValueError("Choose the exported mesh to package.")
     primary = reviewed_image(library, project, "mesh_input")
-    references = {side: reviewed_image(library, project, "reference_"+side) for side in SIDES}
-    for revision in references.values():
+    references = {}
+    for side in SIDES:
+        if audience == "agent":
+            references[side] = reviewed_image(library, project, "reference_"+side)
+        else:
+            slot = project["images"]["reference_" + side]
+            revision = next((r for r in slot["revisions"] if r["id"] == slot["current"]), None)
+            if not revision or revision.get("review", {}).get("decision") == "rejected":
+                continue
+            path = library.path(project_id, revision["file"])
+            if not path.is_file() or digest(path) != revision["sha256"]:
+                raise ValueError("A reference image changed on disk. Restore or clear it before exporting.")
+            references[side] = revision
+    for side, revision in list(references.items()):
         recipe = revision.get("recipe", {})
         if recipe.get("task") == "reference_view":
             if not recipe.get("references") or recipe["references"][0]["id"] != primary["id"]:
-                raise ApprovalRequired("A reference belongs to an older primary image. Regenerate or explicitly replace it.")
+                if audience == "agent":
+                    raise ApprovalRequired("A reference belongs to an older primary image. Regenerate or explicitly replace it.")
+                del references[side]
     selected = []
     for artifact_id in artifact_ids:
         record = next((a for a in project["artifacts"] if a["id"] == identifier(artifact_id)), None)
@@ -128,11 +182,17 @@ def create_package(library, project_id: str, expected_revision: int, artifact_id
     mesh = selected[0]
     with library.path(project_id, mesh["file"]).open("rb") as stream:
         geometry = inspect_mesh(stream)
+    lineage=[];ancestor=mesh;seen=set()
+    while ancestor and ancestor["id"] not in seen:
+        seen.add(ancestor["id"])
+        lineage.append({"artifact_id":ancestor["id"],"kind":ancestor["kind"],"sha256":ancestor["sha256"],"geometry_stage":ancestor.get("geometry_stage"),"appearance_stage":ancestor.get("appearance_stage"),"variant":ancestor.get("variant"),"parameters":recipe_parameters(ancestor.get("recipe",{}))})
+        ancestor=next((a for a in project["artifacts"] if a["id"]==ancestor.get("parent_artifact_id")),None)
     package_id = uuid.uuid4().hex[:16]
     relative = f"packages/{package_id}"
     folder = library.path(project_id, relative)
     folder.mkdir(parents=True, exist_ok=False)
     files = {}
+    include_resource_notices(folder, files)
 
     def include(source, destination):
         source_path = library.path(project_id, source)
@@ -151,6 +211,17 @@ def create_package(library, project_id: str, expected_revision: int, artifact_id
             if digest(library.path(project_id, source)) != mesh["hashes"][name]:
                 raise ValueError("A material map changed on disk. Re-export before packaging.")
             include(source, "materials/"+name)
+    material_selections=[]
+    if mesh.get("material_session_id"):
+        from . import materials
+        session_id=identifier(mesh["material_session_id"])
+        selections={r["mask_id"] for r in mesh.get("recipe",{}).get("material_assignments",{}).get("regions",[]) if r.get("mask_id")}
+        for mask_id in sorted(selections):
+            materials.mask_bytes(library,project_id,session_id,mask_id)
+            rel="materials/selections/"+mask_id+".bin"
+            include("pipeline/materials/"+session_id+"/masks/"+mask_id+".bin",rel)
+            if files[rel]["sha256"]!=mask_id:raise ValueError("Selection changed during packaging")
+            material_selections.append({"path":rel,"mask_id":mask_id,"face_count":mesh.get("triangles"),"encoding":"packed little-endian bits, one bit per triangle in asset.glb"})
     if mesh.get("print"):
         print_path = library.path(project_id, mesh["print"]["file"])
         if digest(print_path) != mesh["hashes"].get(print_path.name):
@@ -161,17 +232,18 @@ def create_package(library, project_id: str, expected_revision: int, artifact_id
         include(selected[1]["file"], "game.glb")
         optional.append({"path": "game.glb", "artifact_id": selected[1]["id"]})
     master = next((a for a in project["artifacts"] if a["id"] == mesh.get("master")), {})
-    manifest = {"schema": "mumblebox.agent-package/1", "id": package_id, "created": time.time(),
+    manifest = {"schema": f"mumblebox.{audience}-package/1", "id": package_id, "created": time.time(),
         "project_id": project_id, "project_revision": expected_revision,
         "design_brief": project["prompt"], "design_notes": project["design_notes"], "target": copy.deepcopy(project["target"]),
-        "primary_mesh": {"path": "asset.glb", "artifact_id": mesh["id"], "dimensions_meters": geometry["dimensions_meters"],
+        "pipeline_lineage": lineage, "material_selections":material_selections,
+        "primary_mesh": {"path": "asset.glb", "artifact_id": mesh["id"], "source_sha256":mesh["sha256"], "variant":mesh.get("variant"), "material_revision":mesh.get("material_revision"), "dimensions_meters": geometry["dimensions_meters"],
                          "unit": "meter", "up_axis": "Y", "normal_convention": mesh.get("normal_convention"), "geometry": geometry},
         "optional_meshes": optional,
         "print": {key: copy.deepcopy(value) for key, value in mesh.get("print", {}).items() if key != "file"},
         "primary_image": {"path": "images/mesh-input.png", "revision_id": primary["id"], "source_sha256": primary["sha256"],
                           "review": primary["review"], "origin": primary.get("origin", "generated")},
         "reference_images": {side: {"path": f"images/{side}.png", "revision_id": revision["id"],
-            "requested_view": side, "camera_verification": "not_measured", "review": revision["review"],
+            "requested_view": side, "camera_verification": "not_measured", "review": revision.get("review", {"decision": "unreviewed", "notes": ""}),
             "parameters": recipe_parameters(revision.get("recipe", {}))} for side, revision in references.items()},
         "parameters": {"primary_generation": recipe_parameters(primary.get("recipe", {})),
                        "reconstruction": recipe_parameters(master.get("recipe", {})),
@@ -179,14 +251,21 @@ def create_package(library, project_id: str, expected_revision: int, artifact_id
         "memory_preset_id": mesh.get("recipe", {}).get("memory_preset_id", "unrecorded"),
         "preset_overrides": mesh.get("recipe", {}).get("preset_overrides", []),
         "known_discrepancies": [{"view": side, "notes": revision["review"]["notes"]}
-                                for side, revision in references.items() if revision["review"]["notes"]],
+                                for side, revision in references.items() if revision.get("review", {}).get("notes")],
         "limitations": ["Unseen geometry is inferred from one reconstruction image.",
                         "Reference images communicate design intent and can disagree.",
                         "Rigging, collision, LODs, topology and printer suitability require finishing checks."],
         "files": files}
-    brief = folder/"AGENT-BRIEF.md"
-    brief.write_text(agent_brief(manifest), encoding="utf-8")
-    files["AGENT-BRIEF.md"] = {"sha256": digest(brief), "size_bytes": brief.stat().st_size}
+    brief_name = "AGENT-BRIEF.md" if audience == "agent" else "ASSET-NOTES.md"
+    brief = folder / brief_name
+    notes = ("# Asset notes\n\n" + project["prompt"] + "\n\n" + project["design_notes"]
+             + "\n\n" + project["target"].get("user_instructions", "")
+             + "\n\nasset.glb uses meters and a Y-up axis. Materials are embedded in the GLB. "
+             "Separate material maps and a print export are included when available.\n\n"
+             "Reference images describe design intent; they are not measured views. "
+             "manifest.json records their review status, the actual settings, dimensions and file checksums.\n")
+    brief.write_text(agent_brief(manifest) if audience == "agent" else notes, encoding="utf-8")
+    files[brief_name] = {"sha256": digest(brief), "size_bytes": brief.stat().st_size}
     atomic_json(folder/"manifest.json", manifest)
     archive_path = library.path(project_id, relative+".zip")
     temporary = archive_path.with_suffix(".part")
@@ -214,7 +293,7 @@ def validate_package(path: str) -> dict:
             if relative.is_absolute() or ".." in relative.parts or "\\" in name or ":" in name:
                 raise ValueError("The archive contains an unsafe path.")
         manifest = json.loads(archive.read("manifest.json"))
-        if manifest["schema"] != "mumblebox.agent-package/1":
+        if manifest["schema"] not in ("mumblebox.agent-package/1", "mumblebox.asset-package/1"):
             raise ValueError("Unknown agent-package schema.")
         if set(names) != {"manifest.json", *manifest["files"]}:
             raise ValueError("The archive members do not match its manifest.")
@@ -225,7 +304,7 @@ def validate_package(path: str) -> dict:
                     checksum.update(block)
             if checksum.hexdigest() != record["sha256"] or archive.getinfo(name).file_size != record["size_bytes"]:
                 raise ValueError("An archive file differs from its recorded checksum or size.")
-        if set(manifest["reference_images"]) != set(SIDES):
+        if manifest["schema"] == "mumblebox.agent-package/1" and set(manifest["reference_images"]) != set(SIDES):
             raise ValueError("The package does not contain four design references.")
         with archive.open(manifest["primary_mesh"]["path"]) as stream:
             geometry = inspect_mesh(stream)

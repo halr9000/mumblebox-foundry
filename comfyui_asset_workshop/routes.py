@@ -95,7 +95,8 @@ def resources():
 def idle():
     if queue().get_tasks_remaining():
         raise ValueError("Another Comfy job is queued or running. Wait for it to finish.")
-    if single_image_jobs_active():
+    from .foundry.workflows.image_to_3d.runs import busy as foundry_busy
+    if single_image_jobs_active() or foundry_busy():
         raise JobConflict("A Mumblebox job is still active. Wait for it to finish or stop it before changing the library or History.")
     if description_helper.STATE.get("running"):
         raise ValueError("The description assistant is working. Wait for it or stop it before generating an image.")
@@ -153,6 +154,7 @@ def reconcile(asset):
 @ROUTES.get(PREFIX + "/status")
 @endpoint
 async def status(request):
+    from .civitai_routes import DOWNLOADS
     ram = psutil.virtual_memory()
     device = memory.get_torch_device()
     total = int(memory.get_total_memory(device)) if device.type != "cpu" else 0
@@ -165,8 +167,11 @@ async def status(request):
         "cpu_percent": psutil.cpu_percent(interval=None),
         "ram_total": ram.total, "ram_used": ram.total - ram.available,
         "vram_total": total, "vram_used": total - free,
-        "running": queue().get_tasks_remaining() > 0, "root": configuration()["root"],
+        "loaded_models": len(memory.current_loaded_models),
+        "helper_loaded": description_helper.PROCESS is not None and description_helper.PROCESS.poll() is None,
+        "running": queue().get_tasks_remaining() > 0 or __import__(__package__+".foundry.workflows.image_to_3d.runs",fromlist=["busy"]).busy(), "root": configuration()["root"],
         "download": dict(models.DOWNLOAD), "profiles": PROFILES,
+        "resource_download": DOWNLOADS.status(),
         "startup_vram_reserve_gb": memory.extra_reserved_memory() / 1024**3,
         "startup_vram_headroom_gb": args.vram_headroom,
         "pending_vram_headroom_gb": configuration().get("pending_vram_headroom_gb", args.vram_headroom),
@@ -400,9 +405,11 @@ async def preview_asset(request):
     if asset.get("schema_version") == 2:
         collection = "artifacts"
     output = next(item for item in asset[collection] if item["id"] == output_id)
-    if asset.get("schema_version") == 2 and output.get("kind") != "mesh":
+    if asset.get("schema_version") == 2 and output.get("kind") not in ("mesh","geometry"):
         raise ValueError("Choose an exported mesh for the 3D preview.")
-    path = library.path(asset["id"], output["file"])
+    path = library.path(asset["id"], output.get("preview_file",output["file"]))
+    expected = output.get("preview_sha256",output.get("sha256"))
+    if expected and digest(path)!=expected:raise ValueError("Preview file changed on disk")
     output_root = Path(folder_paths.get_output_directory()).resolve()
     if path.is_relative_to(output_root):
         relative, kind = path.relative_to(output_root), "output"

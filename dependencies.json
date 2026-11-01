@@ -1,0 +1,39 @@
+{
+  "version": "0.1.0-preview.3",
+  "platform": "Windows NVIDIA",
+  "reference_hardware": {
+    "gpu": "RTX 4080 SUPER",
+    "vram_gb": 16,
+    "ram_gb": 64
+  },
+  "comfyui": {
+    "repository": "https://github.com/Comfy-Org/ComfyUI",
+    "revision": "483dae4326356b81de05d27aca3f433dd323cc25",
+    "frontend": "0.42.5"
+  },
+  "trellis_wrapper": {
+    "repository": "https://github.com/visualbruno/ComfyUI-Trellis2",
+    "revision": "b0e84c0f29857a444e8bcb5b9be2ea218e96efd0",
+    "python": "3.13",
+    "torch": "2.10.0+cu130",
+    "wheel_directory": "wheels/Windows/Torch2100/CUDA 13.1",
+    "wheel_abi": "cp313-win_amd64"
+  },
+  "hi3d_workbench": {
+    "repository": "https://github.com/T8mars/Comfyui-Hi3d-T8",
+    "revision": "dd5776d720974ca7a4b7a185415be4259da5a50d",
+    "python": "3.10",
+    "url": "http://127.0.0.1:8378",
+    "download_models_during_install": false
+  },
+  "blender": "5.2.2 LTS",
+  "weights": {
+    "included": false,
+    "download": "first requested stage only",
+    "manifest": "comfyui_asset_workshop/models.lock.json"
+  },
+  "mcp": {
+    "sdk": "2.3.0",
+    "entry": "comfyui_asset_workshop/agent/foundry_server.py"
+  }
+}

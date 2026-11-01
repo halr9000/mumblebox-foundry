@@ -14,6 +14,8 @@ import requests
 
 from .civitai_catalog import CivitaiError, RESOURCE_HOSTS, filename, http_error
 
+INDEX_LOCK = threading.RLock()
+
 
 def atomic_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -31,6 +33,93 @@ def file_hash(path):
         while data := handle.read(4 * 1024**2):
             result.update(data)
     return result.hexdigest()
+
+
+def installed_records(root):
+    """One installed-information store for Civitai and included model weights."""
+    root = Path(root).resolve()
+    path = (root / '.mumblebox-civitai' / 'installed.json').resolve()
+    if not path.is_relative_to(root):
+        raise CivitaiError('The model information store points outside this installation.', 'path')
+    if not path.is_file():
+        return []
+    data = json.loads(path.read_text(encoding='utf-8'))
+    if not isinstance(data, list) or len(data) > 1000:
+        raise CivitaiError('The installed model catalog is invalid or exceeds 1,000 entries.', 'storage')
+    result = []
+    for item in data:
+        target = (root / item['category'] / item['relative_path']).resolve()
+        if not target.is_relative_to(root):
+            raise CivitaiError('The model information points outside this installation.', 'path')
+        if target.is_file():
+            result.append(item)
+    return result
+
+
+def publish_model_info(root, target, item):
+    """Preserve the existing index/sidecar format, with explicit source ownership."""
+    root, target = Path(root).resolve(), Path(target).resolve()
+    category = (root / item['category']).resolve()
+    index = (root / '.mumblebox-civitai' / 'installed.json').resolve()
+    sidecar = target.with_suffix('.civitai.json').resolve()
+    if (item['category'] not in ('loras', 'checkpoints', 'diffusion_models')
+            or not target.is_relative_to(category) or not category.is_relative_to(root)
+            or not index.is_relative_to(root) or not sidecar.is_relative_to(root)):
+        raise CivitaiError('The model information destination is outside this installation.', 'path')
+    with INDEX_LOCK:
+        records = installed_records(root)
+        relative = target.relative_to(category).as_posix()
+        previous = next((r for r in records if r['category'] == item['category'] and r['relative_path'] == relative), {})
+        records = [r for r in records if not (r['category'] == item['category'] and r['relative_path'] == relative)
+                   and str(r['file_id']) != str(item['file_id'])]
+        if len(records) >= 1000:
+            raise CivitaiError('The installed model catalog has reached 1,000 entries.', 'storage')
+        record = {**previous, **{k: v for k, v in item.items() if k != 'download_url'},
+                  'relative_path': relative, 'installed_at': previous.get('installed_at', time.time()),
+                  'size_bytes': target.stat().st_size}
+        record.setdefault('source_provider', 'civitai')
+        atomic_json(sidecar, record)
+        atomic_json(index, records + [record])
+        return record
+
+
+def register_included_lora_info(root, names=None):
+    """Explicit refresh/install operation; matching hashes prevent guessed identities."""
+    root = Path(root).resolve()
+    directory = Path(__file__).parent
+    guides = json.loads((directory / 'lora_guides.json').read_text(encoding='utf-8'))['guides']
+    pinned = json.loads((directory / 'models.lock.json').read_text(encoding='utf-8'))['models']
+    existing = installed_records(root)
+    registered, skipped = [], []
+    for guide in guides:
+        model = pinned.get(guide.get('model_key'), {})
+        name = guide.get('name') or model.get('name')
+        if names is not None and name not in names:
+            continue
+        path = (root / 'loras' / name).resolve()
+        if not path.is_relative_to(root / 'loras') or not path.is_file():
+            continue
+        sha = guide.get('sha256') or model['sha256']
+        stat = path.stat()
+        fingerprint = [stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns]
+        previous = next((item for item in existing if item['category'] == 'loras' and item['relative_path'] == name), {})
+        if (previous.get('sha256') == sha and previous.get('guide_revision') == guide['guide_revision']
+                and previous.get('verified_file_stat') == fingerprint):
+            continue
+        if file_hash(path) != sha:
+            skipped.append(name)
+            continue
+        repo = guide.get('repo') or model['repo']
+        revision = guide.get('revision') or model['revision']
+        item = {**guide, 'source_provider': 'huggingface', 'model_id': repo,
+                'version_id': revision, 'version_name': guide.get('version_name', revision[:8]),
+                'file_id': 'hf:' + sha, 'kind': 'LORA', 'category': 'loras', 'name': name,
+                'sha256': sha, 'verified_file_stat': fingerprint, 'source_url': 'https://huggingface.co/' + repo,
+                'license_url': guide.get('license_url') or model.get('license_url') or 'https://huggingface.co/' + repo,
+                'profile': guide['profiles'][0], 'notes': guide['description'], 'permissions': {}}
+        publish_model_info(root, path, item)
+        registered.append(name)
+    return {'registered': registered, 'unrecognized': skipped}
 
 
 class TransferStopped(Exception):
@@ -85,19 +174,13 @@ class Downloader:
                 atomic_json(self.contained(self.cache / 'transfer.json'), self.record)
 
     def installed(self):
-        path = self.contained(self.cache / 'installed.json')
-        if not path.is_file():
-            return []
-        data = json.loads(path.read_text(encoding='utf-8'))
-        if not isinstance(data, list) or len(data) > 1000:
-            raise CivitaiError('The local Civitai catalog is invalid or exceeds 1,000 entries.', 'storage')
-        return [item for item in data if self.contained(self.root / item['category'] / item['relative_path']).is_file()]
+        return installed_records(self.root)
 
     def selected(self, file_id, profile=None, kind=None):
         item = next((v for v in self.installed() if str(v['file_id']) == str(file_id)), None)
         if not item or kind and item['kind'] != kind:
             raise CivitaiError('Choose an installed Civitai resource. It may have been moved or removed.')
-        if profile and item['profile'] != profile and not (item['family'] == 'sdxl' and profile in ('sdxl_base', 'sdxl_juggernaut')):
+        if profile and profile not in item.get('profiles', [item['profile']]) and not (item['family'] == 'sdxl' and profile in ('sdxl_base', 'sdxl_juggernaut')):
             raise CivitaiError('The installed resource belongs to another model variant.', 'compatibility')
         return item
 
@@ -257,14 +340,7 @@ class Downloader:
             self.gate.release()
 
     def publish_index(self, target, item):
-        records = self.installed()
-        records = [r for r in records if r['file_id'] != item['file_id']]
-        if len(records) >= 1000:
-            raise CivitaiError('The installed Civitai catalog has reached 1,000 entries.', 'storage')
-        item = {**item, 'relative_path': target.relative_to(self.root / item['category']).as_posix(),
-                'installed_at': time.time(), 'size_bytes': target.stat().st_size}
-        atomic_json(target.with_suffix('.civitai.json'), item)
-        atomic_json(self.contained(self.cache / 'installed.json'), records + [item])
+        publish_model_info(self.root, target, item)
 
     def finish_partial(self, part, target, item, safe_item):
         self.update(True, phase='Verifying SHA-256')

@@ -1,0 +1,185 @@
+import {api} from "/scripts/api.js";
+import {el,button,hint} from "../dom.js";
+import {request} from "../services.js";
+import {dialog} from "../dialogs.js";
+import {referenceFilename,syncWizardGraph,syncWizardOutputs,wizardStateKey,clearWizardState,savedWizardState,rememberPreviousSession} from "../graph-adapter.js";
+import {initialState,copyRunConfiguration} from "./session.js";
+import {exportChoices,validateExports} from "./export-choices.js";
+import {FIRST_USE_MESSAGE} from "../activity-state.js";
+import {inputPage,reviewPage,optionsPage,finishingPage,resultPage} from "./pages.js";
+const clone=value=>JSON.parse(JSON.stringify(value));
+const titles=["Your starting images","Review the four views","Mesh and refinement","Refined mesh and exports","Your asset package"];
+const stepLabels=["Starting images","Four views","Mesh settings","Refine & export","Asset package"];
+const stepDescriptions=["References and image model","Review the turnaround","Detail and refinement controls","Preview and output choices","Files and production record"];
+const stageNames={turnaround:"Qwen Image 2.1 · Creating four views",geometry:"Pixal3D / TRELLIS.2 · Building the initial mesh",
+ refinement:"Hi3D · Refining and cleaning the geometry",texture:"TRELLIS.2 · Texturing the finished geometry",
+ balanced:"Baking the balanced game mesh",compact:"Baking the compact game mesh",quads:"QuadriFlow · Retopology, UVs and detail baking",
+ print:"Preparing and measuring the print mesh",package:"Writing exports, README and ZIP"};
+export class Wizard {
+    constructor(shell,{resume=false,runId=null}={}) {
+        this.shell=shell;this.node=shell.node;this.page=1;this.disposed=false;this.previewDispose=null;
+        const saved=savedWizardState(this.node);
+        if(!resume)rememberPreviousSession(this.node);
+        const state=initialState(saved,resume);
+        this.draft=state.draft;this.sessionId=state.sessionId||crypto.randomUUID();
+        this.draft.turnaround_model??="qwen21";
+        this.runId=state.runId;this.page=state.page;
+        this.agentRunId=runId;
+        if(runId)this.runId=runId;
+        this.host=el("section",{class:"wizard","aria-label":"Image to 3D wizard"});
+        this.progressHandler=e=>{
+            if(!this.run?.active||e.detail?.prompt_id&&e.detail.prompt_id!==this.run.pending?.prompt_id)return;
+            const value=e.detail?.value,max=e.detail?.max;
+            if(Number.isFinite(value)&&max>0&&this.sampleProgress)this.sampleProgress.textContent="Sampling "+value+" of "+max;
+        };
+        api.addEventListener("progress",this.progressHandler);
+    }
+    async init(){
+        this.cap=await request("wizard/capabilities");
+        this.draft.selection??=structuredClone(this.cap.selection);
+        this.draft.profile=this.shell.data?.preferences?.profile||"default";
+        if(this.runId){
+            try{
+                this.run=await request("wizard/runs/"+this.runId);
+                if(this.agentRunId){
+                    const r=this.run;
+                    this.draft=copyRunConfiguration(this.draft,r);
+                    this.page=r.operation==="rocket"||r.package?5:r.completed.includes("refinement")?4:r.completed.includes("turnaround")?2:1;
+                    const branch=await request("wizard/runs/"+this.runId+"/turnaround-graph");
+                    syncWizardGraph(r,this.node,branch);this.remember();
+                }
+                this.applyRun();
+            }
+            catch(error){this.error=error.message;this.runId=null;this.page=1;}
+        }
+        this.shell.message("Local workspace · Image-to-3D workflow");
+        this.render();this.poll();
+        return this.host;
+    }
+    remember(){
+        const state={page:this.page,draft:clone(this.draft),runId:this.runId,sessionId:this.sessionId};
+        this.node.properties.foundryWizard=state;
+        localStorage.setItem(wizardStateKey(),JSON.stringify(state));
+    }
+    applyRun(){
+        syncWizardOutputs(this.run.outputs,this.node);
+        if(!this.run.geometry_audit&&this.run.outputs?.["2015"]?.text?.[0]){
+            try{this.run.geometry_audit=JSON.parse(this.run.outputs["2015"].text[0]);}catch{}
+        }
+        if(this.run.status==="complete")this.error="";
+        else if(this.run.error)this.error=this.run.error;
+    }
+    async poll(){
+        if(this.disposed)return;
+        try{
+            if(this.runId){
+                const current=await request("wizard/runs/"+this.runId);
+                if(this.disposed)return;
+                const changed=JSON.stringify([current.status,current.active,current.stage,current.pending?.prompt_id,current.events?.at(-1),current.dependency?.name,current.dependency?.phase])!==
+                    JSON.stringify([this.run?.status,this.run?.active,this.run?.stage,this.run?.pending?.prompt_id,this.run?.events?.at(-1),this.run?.dependency?.name,this.run?.dependency?.phase]);
+                this.run=current;
+                if(changed){this.applyRun();this.render();}
+                if(this.elapsed&&current.pending?.started){
+                    const seconds=Math.max(0,Math.floor(Date.now()/1000-current.pending.started));
+                    this.elapsed.textContent="Elapsed: "+Math.floor(seconds/60)+"m "+(seconds%60)+"s";
+                }
+                if(current.dependency&&this.sampleProgress){
+                    const d=current.dependency;
+                    this.sampleProgress.textContent=[d.name,d.phase,d.total?Math.round((d.bytes||0)/d.total*100)+"%":""].filter(Boolean).join(" · ");
+                }
+            }
+        }catch(error){if(!this.disposed)this.shell.message(error.message,true);}
+        if(!this.disposed)this.timer=setTimeout(()=>this.poll(),1800);
+    }
+    async act(fn){
+        if(this.working)return;
+        this.working=true;this.error="";
+        try{await fn();this.shell.message("Local workspace · Image-to-3D workflow");}
+        catch(error){this.error=error.message;this.shell.message(error.message,true);}
+        finally{this.working=false;if(!this.disposed)this.render();}
+    }
+    async save(){
+        const data=clone(this.draft);
+        this.run=await request(this.runId?"wizard/runs/"+this.runId:"wizard/runs",data,this.runId?{method:"PATCH"}:{});
+        this.runId=this.run.id;this.remember();
+        const branch=await request("wizard/runs/"+this.runId+"/turnaround-graph");
+        syncWizardGraph(this.run,this.node,branch);
+    }
+    async start(operation){
+        await this.save();
+        this.run=await request("wizard/runs/"+this.runId+"/start",{operation,client_id:api.clientId||"",request_id:crypto.randomUUID()});
+        this.page=operation==="turnaround"?2:operation==="mesh"?4:5;
+        this.remember();this.render();
+    }
+    go(page){this.page=page;this.remember();this.render();this.shell.content.scrollTop=0;}
+    rocket(){
+        const selection=structuredClone(this.draft.selection);
+        const error=el("p",{class:"error-panel",role:"alert",hidden:true});
+        dialog(this.shell,"Finish this asset with Rocket Mode?",el("div",{class:"rocket-confirmation"},
+            hint("Continue from this point using your current settings. Saved, unchanged stages are reused. The remaining stages run automatically without further Next clicks."),
+            exportChoices(this.cap.exports,selection),error),[
+            {label:"Keep working manually",run:close=>close()},
+            {label:"Start Rocket Mode",primary:true,run:close=>{
+                try{validateExports(selection);}catch(e){error.textContent=e.message;error.hidden=false;return;}
+                this.draft.selection=selection;this.remember();close();this.act(()=>this.start("rocket"));
+            }}]);
+    }
+    confirmReset(){
+        dialog(this.shell,"Start over?",hint("Return to workflow selection? Your saved images, meshes and packages will remain on disk."),
+            [{label:"Keep working",run:close=>close()},{label:"Start over",primary:true,run:close=>{
+                close();clearWizardState(this.node);this.shell.open("Choose a Workflow");
+            }}]);
+    }
+    cancel(){
+        dialog(this.shell,"Cancel this stage?",hint("Completed stages will remain available. Only this wizard's queued or running job will be cancelled."),
+            [{label:"Keep running",run:close=>close()},{label:"Cancel stage",run:close=>{
+                close();this.act(async()=>{this.run=await request("wizard/runs/"+this.runId+"/cancel",{});});
+            }}]);
+    }
+    image(url,label){
+        const img=el("img",{src:url,alt:label,loading:"lazy"});
+        return button(img,()=>dialog(this.shell,label,el("img",{src:url,alt:label,class:"enlarged-image"})),
+            {class:"image-preview","aria-label":"Enlarge "+label});
+    }
+    nav({next,nextText="Next",note="",back=this.page-1}={}){
+        const active=!!this.run?.active||this.working;
+        return el("footer",{class:"wizard-footer"},note?hint(note):null,
+            el("div",{class:"actions"},back>=1?button("Back",()=>this.go(back),{disabled:active}):null,
+                next?button(nextText,()=>this.act(next),{class:"primary",disabled:active}):null,
+                next&&this.draft.references.length?button("Rocket Mode",()=>this.rocket(),{disabled:active,title:"Choose exports, then finish the remaining stages automatically"}):null,
+                this.run?.active?button("Cancel",()=>this.cancel(),{class:"danger"}):null,
+                button("Start Over",()=>this.confirmReset(),{disabled:active,class:"quiet"})));
+    }
+    busy(){
+        if(!this.run?.active)return null;
+        this.sampleProgress=el("span",{class:"muted"});
+        this.elapsed=el("span",{class:"muted"});
+        return el("div",{class:"wizard-busy",role:"status","aria-live":"polite"},
+            el("img",{src:new URL("../../assets/foundry-chaos-star.svg",import.meta.url).href,alt:"",class:"working-star"}),
+            el("div",{},el("strong",{},this.run.dependency?"Preparing required models":this.run.stage==="turnaround"?(this.run.turnaround?.name||"Image model")+" · Creating four views":stageNames[this.run.stage]||"Preparing the next stage"),this.sampleProgress,this.elapsed,
+                hint(this.run.dependency?FIRST_USE_MESSAGE:this.run.stage==="refinement"?"Refinement can take several minutes. The saved initial mesh is retained.":"Your completed stages are saved as the workflow progresses.")));
+    }
+    render(){
+        if(this.disposed)return;
+        this.previewDispose?.();this.previewDispose=null;
+        const rail=el("aside",{class:"wizard-rail","aria-label":"Workflow progress"},
+            el("span",{class:"eyebrow"},"IMAGE TO 3D"),el("h3",{},"From reference\nto asset"),
+            el("ol",{class:"wizard-steps"},...stepLabels.map((title,i)=>el("li",{
+                class:i+1===this.page?"current":i+1<this.page?"visited":"",
+                ...(i+1===this.page?{"aria-current":"step"}:{})},
+                el("span",{class:"step-number","aria-hidden":"true"},String(i+1).padStart(2,"0")),
+                el("div",{},el("strong",{},title),el("small",{},stepDescriptions[i]))))),
+            el("div",{class:"wizard-rail-note"},el("strong",{},"Defaults are loaded"),
+                hint("Start with the loaded defaults. Open Advanced whenever you want more control.")));
+        const header=el("div",{class:"page-head"},el("div",{},el("span",{class:"eyebrow"},"PAGE "+this.page+" OF 5"),
+            el("h2",{tabindex:-1},titles[this.page-1])));
+        const pages=[inputPage,reviewPage,optionsPage,finishingPage,resultPage];
+        const panel=el("div",{class:"wizard-panel"},header,
+            this.error?el("div",{class:"error-panel",role:"alert"},this.error):null,this.busy(),pages[this.page-1](this));
+        this.host.replaceChildren(rail,panel);
+        // Native DOM append does not accept null. Filtered via the shared helper.
+        this.host.querySelector("h2")?.scrollIntoView({block:"nearest"});
+        this.remember();
+    }
+    dispose(){this.disposed=true;clearTimeout(this.timer);this.previewDispose?.();api.removeEventListener("progress",this.progressHandler);}
+}

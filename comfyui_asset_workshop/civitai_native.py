@@ -8,7 +8,7 @@ import folder_paths
 from safetensors import safe_open
 
 from .civitai_catalog import CivitaiError
-from .civitai_downloads import file_hash
+from .civitai_downloads import file_hash, installed_records as read_installed_records
 
 
 def root():
@@ -77,13 +77,7 @@ def validate_weights(path, item):
 
 
 def installed_records():
-    path = root() / '.mumblebox-civitai' / 'installed.json'
-    if not path.is_file():
-        return []
-    values = json.loads(path.read_text(encoding='utf-8'))
-    if not isinstance(values, list) or len(values) > 1000:
-        raise CivitaiError('The installed resource catalog is invalid.', 'storage')
-    return values
+    return read_installed_records(root())
 
 
 def selected_model(asset, verify=False):

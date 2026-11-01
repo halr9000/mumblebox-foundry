@@ -45,6 +45,42 @@ def create_server(client):
 
     @server.tool(structured_output=True)
     @expected_errors
+    def save_pipeline(project_id:str,expected_revision:int,changes:dict)->dict[str,Any]:
+        """Save next-run refinement/cleanup/provider/detail/material settings; never launches work."""
+        return client.save_pipeline(project_id,expected_revision,changes)
+
+    @server.tool(structured_output=True)
+    @expected_errors
+    def select_pipeline_artifact(project_id:str,expected_revision:int,artifact_id:str)->dict[str,Any]:
+        """Select an existing verified geometry or appearance for preview/export without generating."""
+        return client.select_pipeline_artifact(project_id,expected_revision,artifact_id)
+
+    @server.tool(structured_output=True)
+    @expected_errors
+    def create_material_session(project_id:str,expected_revision:int,source_id:str,settings:dict|None=None)->dict[str,Any]:
+        """Bind a Materials Lab session to an exact prepared variant; then prepare_material_guide through start_job."""
+        return client.create_material_session(project_id,expected_revision,source_id,settings)
+
+    @server.tool(structured_output=True)
+    @expected_errors
+    def get_material_session(project_id:str,session_id:str)->dict[str,Any]:
+        """Read saved choices, brush masks, draft revision and latest rendered revision; never generates."""
+        return client.get_material_session(project_id,session_id)
+
+    @server.tool(structured_output=True)
+    @expected_errors
+    def get_material_selection(project_id:str,session_id:str,mask_id:str)->dict[str,Any]:
+        """Read one saved packed brush mask when needed; normal session reads return its immutable ID."""
+        return client.get_material_selection(project_id,session_id,mask_id)
+
+    @server.tool(structured_output=True)
+    @expected_errors
+    def save_material_choices(project_id:str,session_id:str,expected_draft_revision:int,state:dict)->dict[str,Any]:
+        """Save bounded region choices/form drafts. Fine selections use base64 packed little-endian face_mask. Apply via start_job apply_materials."""
+        return client.save_material_choices(project_id,session_id,expected_draft_revision,state)
+
+    @server.tool(structured_output=True)
+    @expected_errors
     def import_image(project_id: str, expected_revision: int, path: str, role: str = 'source') -> dict[str, Any]:
         """Upload an explicitly authorized local image. Sources guide creation; mesh_input requires separate review."""
         return client.import_image(project_id, expected_revision, path, role)
@@ -73,7 +109,7 @@ def create_server(client):
     @server.tool(structured_output=True)
     @expected_errors
     def start_job(project_id: str, expected_revision: int, kind: str, request_key: str, payload: dict | None = None) -> dict[str, Any]:
-        """Start the shared visible job. Retrying an uncertain request must reuse the same key and inputs."""
+        """Start the shared visible job: build_geometry, texture_mesh, prepare_variant, prepare_material_guide, apply_materials or image/legacy jobs. Use saved source_id/variant/session_id payloads. Retry uncertain requests with the same key and inputs."""
         return client.start_job(project_id, expected_revision, kind, request_key, payload)
 
     @server.tool(structured_output=True)
@@ -119,9 +155,9 @@ def create_server(client):
 
     @server.tool(structured_output=True)
     @expected_errors
-    def export_package(project_id: str, expected_revision: int, artifact_ids: list[str]) -> dict[str, Any]:
-        """Package a completed mesh and five reviewed images. Missing/rejected references are reported."""
-        return client.export_package(project_id, expected_revision, artifact_ids)
+    def export_package(project_id: str, expected_revision: int, artifact_ids: list[str], audience: str = "agent") -> dict[str, Any]:
+        """Export the selected mesh. agent requires five reviewed images; asset matches the GUI and includes available references."""
+        return client.export_package(project_id, expected_revision, artifact_ids, audience)
 
     @server.tool(structured_output=True)
     @expected_errors

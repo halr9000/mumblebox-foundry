@@ -1,0 +1,62 @@
+# Preview 0.1.0-preview.3 validation
+
+Validated on 2026-11-01. Evidence below separates installed control actions, automated tests and exported-asset checks. Generated test assets and local diagnostic receipts are not distributed.
+
+## Installed interface checks
+
+The existing Comfy Desktop window remained available through Alt-Tab. Checks used its supported integration without bringing the operating-system window forward. The main graph retained 94 nodes, 20 groups, 137 links and 31 output records.
+
+| Area | Observed result |
+|---|---|
+| Main shell and wizard | Compact grouped navigation, requested removals, combined reference intake and model/licensing section afterward. All five wizard pages inspected. |
+| New versus resumed work | Open Wizard opened an empty page 1; Resume previous asset restored the saved asset. No generation was started by either action. |
+| Themes and artwork | Real theme controls switched light/dark presentation. The approved shared logo and six workflow illustrations loaded. |
+| Settings | Automatic update preference saved off/on and persisted through bootstrap reads. Check for updates reported a real GitHub availability/rate-limit failure before publication instead of claiming success. |
+| Resource deletion | An exclusive 50-byte test file appeared in the LoRA list. Cancel preserved it; confirmed deletion removed only that file. Shared-resource Delete controls were disabled. No user model was deleted. |
+| Civitai | Family changes requested new results automatically. NSFW filtering sent true/false. API-key help opened the correct Settings field. Download selected Pixel Art XL and verified an existing 162.6 MB file, without another weight download. |
+| History | The saved asset displayed its generated front image. The public package-import panel was absent. |
+| Rocket confirmation | Opened from the wizard, selected versions/formats, rejected an empty selection, and cancelled without altering saved choices. The same selector serves normal exports. |
+| Review workspace | Mesh preview appears beside export choices. Settings and Rocket dialogs fit within the available embedded viewport in both themes. |
+
+The latest checks did not submit a new full GPU generation or execute a real mid-generation cancellation. Rocket orchestration, retry and failure paths have the automated coverage described below; those checks are not presented as manual end-to-end generation proof.
+
+## Automated tests
+
+- Foundry Python suite: **63 passed**. Coverage includes run contracts/recovery, Rocket branch selection and retry idempotency, cancellation/error checkpoint preservation, library paths, resource ownership, MCP boundaries, first-use readiness, missing-only downloads and update checks.
+- Release installer: **4 passed**. Installation/reinstallation preserves settings and model sentinels; changed files are backed up; remote Hi3D URLs and OneDrive runtime paths are rejected before installation writes.
+- JavaScript activity/viewer/session suite: **6 passed**. Includes activity states, drag-only viewer input and fresh-versus-resumed wizard state and missing-field defaults for older agent-opened runs.
+- Ten installed texture snapshot files matched the pinned manifest; verification required **zero model downloads**.
+- Original source diff whitespace checks passed; retained upstream license/vendor text was not reformatted.
+
+## MCP runtime
+
+The distributed Foundry MCP ran through the real stdio protocol against installed Foundry HTTP services. Nine tools were discovered. Capabilities, saved-run status/package access, create/update, idle cancellation and invalid-start rejection passed. Test configuration did not start generation. Input restrictions and other adapter contracts have separate automated coverage. The real display action exposed a legacy run missing its turnaround-model field; session restoration now retains the original Qwen default when that field is absent and copies inputs independently. The fix has a regression test and is verified in the installed interface.
+
+## Portable install and export proof
+
+The allowlisted release was installed into a separate local directory and imported using the existing ComfyUI host dependencies without starting a second server. **44 node classes and 141 routes** registered. Python compilation passed. This checks relocation and package completeness; it is not a fresh-machine installation test.
+
+From that relocated package, the exporter used preserved local assets to create only these requested outputs:
+
+- Compact game mesh: GLB and FBX.
+- Light quad authoring mesh: OBJ and FBX, with required material companions.
+
+The resulting archive contained 22 files. All four mesh files were re-imported in Blender 5.2.2 LTS; polygon counts, UV layers, bounds and packaged texture paths passed. The root README matched the selected directories, files, measurements and recorded limitations. Source asset hashes were unchanged; ZIP integrity passed.
+
+This direct exporter test intentionally supplied no upstream generation metadata, and the README reported that absence. It is not evidence for complete generation-model provenance by itself; the saved full workflow package and provenance contract checks cover that separate path.
+
+The sanitized public graph has empty inputs and no saved output previews or wizard session. Its 94 nodes, 20 groups and 137 links preserve the working pipeline. Source/archive checks exclude credentials, weights, generated test assets, personal installation paths and local runtime state.
+
+## Preserved pipeline and limits
+
+The retained local reference run completed turnaround, native four-view geometry, Hi3D refinement, cleanup, final mesh texturing and multiple exports. This release preserves those results and stage owners. It does not claim that every future subject will be watertight or that arbitrary topology is animation-ready.
+
+- Windows/NVIDIA preview with manual dependency setup; reference system RTX 4080 SUPER, 16 GB VRAM, 64 GB RAM.
+- Alternate model/category generation quality tests remain user testing. Physical webcam capture is deferred because no camera is connected.
+- Additional memory profiles are placeholders. No 8 GB compatibility claim.
+- Quad retopology is optional; no automatic rigging/deformation qualification.
+- FBX material interpretation and Unreal import require destination-specific review. Physical printing is not tested.
+- Strand Groom/Alembic, deferred workflow cards and Pinokio packaging remain future work.
+- Model licenses remain separate from the original code's Apache-2.0 license.
+
+Public release URLs, commit and final archive digest are recorded by GitHub's release and its attached checksum file. The archive also contains SHA256SUMS.json for individual files.

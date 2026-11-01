@@ -16,7 +16,7 @@ from server import PromptServer
 from . import description_helper, image_edits, memory_policy, models, recipes, package_export, prompt_contracts
 from .jobs import JobCoordinator
 from .profiles import PROFILES, capabilities
-from .runtime import store
+from .runtime import store, configuration
 from .store import LOCK, JobConflict, digest, identifier
 
 PREFIX = "/asset-workshop/v2"
@@ -35,6 +35,9 @@ class NativeQueue:
     def active_ids(self):
         running, pending = self.queue.get_current_queue_volatile()
         return {item[1] for item in running + pending}
+
+    def history(self, prompt_id):
+        return self.queue.get_history(prompt_id).get(prompt_id)
 
     async def submit(self, graph, prompt_id, client_id):
         async with ClientSession(timeout=ClientTimeout(total=60)) as client:
@@ -66,8 +69,9 @@ class NativeQueue:
 def artifact_public(artifact):
     result = copy.deepcopy({key: value for key, value in artifact.items() if key != "manifest"})
     if "recipe" in result:
-        result["recipe"] = {key: result["recipe"][key] for key in
-            ("profile", "seed", "steps", "cfg", "task", "requested_view", "lora_validation") if key in result["recipe"]}
+        result["recipe"] = {key:result["recipe"][key] for key in
+            ("profile","seed","steps","cfg","task","requested_view","lora_validation","pipeline_version",
+             "texture_provider","variant","material_model","material_model_revision","preservation") if key in result["recipe"]}
     if artifact.get("kind") == "package" and artifact.get("manifest"):
         manifest = artifact["manifest"]
         result["manifest_summary"] = {"schema": manifest.get("schema"),
@@ -81,6 +85,8 @@ def project_public(project):
     result["jobs"] = [{key: job[key] for key in ("id", "kind", "state", "phase", "error", "created", "updated") if key in job}
                       for job in project["jobs"][-10:]]
     result["artifacts"] = [artifact_public(artifact) for artifact in project["artifacts"]]
+    for session in result.get("pipeline",{}).get("material_sessions",{}).values():
+        session["draft"]={"regions":[{k:r[k] for k in ("kind","id","name") if k in r} for r in session.get("draft",{}).get("regions",[])]}
     for slot in result["images"].values():
         for revision in slot["revisions"]:
             if "recipe" in revision:
@@ -119,6 +125,12 @@ def register(routes, endpoint, resources, native_queue):
                 await resources().barrier()
                 await resources().release("before single-image " + stage["name"])
                 kind = stage["name"]
+                if kind in ("geometry","refine","cleanup","texture","variant","material_guide","materials"):
+                    from .pipeline_recipes import build_stage_recipe
+                    if kind == "geometry":
+                        memory_policy.preflight(snapshot,"mesh")
+                        await asyncio.to_thread(models.verify,recipes.required_models(snapshot,"mesh"))
+                    return build_stage_recipe(project,snapshot,stage,job)
                 native_stage = "image" if kind in ("create_image", "three_quarter", "edit_image", "reference_view") else "master" if kind == "finish" else "prepare" if kind in ("prepare", "prepare_foreground") else "mesh"
                 memory_policy.preflight(snapshot, native_stage)
                 await asyncio.to_thread(models.verify, recipes.required_models(snapshot, native_stage, action=kind))
@@ -150,7 +162,8 @@ def register(routes, endpoint, resources, native_queue):
     @endpoint
     async def get_capabilities(request):
         return web.json_response({"profiles": {key: capabilities(key) for key in PROFILES},
-                                  "hardware": memory_policy.hardware_info()})
+                                  "hardware": memory_policy.hardware_info(),
+                                  "pipeline": __import__(__package__+".pipeline_capabilities",fromlist=["inspect_runtime"]).inspect_runtime(configuration().get("pipeline_runtime",{}))})
 
     @routes.post(PREFIX + "/validate")
     @endpoint
@@ -166,11 +179,20 @@ def register(routes, endpoint, resources, native_queue):
     @routes.get(PREFIX + "/loras")
     @endpoint
     async def local_loras(request):
+        from .lora_catalog import catalog
+        from .civitai_native import installed_records
         root = models.MODEL_ROOT / 'loras'
-        return web.json_response({'folders': [str(root)], 'files': sorted(
-            path.relative_to(root).as_posix() for path in root.rglob('*')
-              if path.resolve().is_relative_to(root) and path.is_file() and path.suffix.lower() in ('.safetensors', '.ckpt', '.pt')),
-            'downloadable': [{'name': recipes.MODELS['sdxl_pixel_art']['name'], 'family': 'sdxl', 'trigger': 'pixel art'}]})
+        result = await asyncio.to_thread(catalog, root, installed_records())
+        result['downloadable'] = [{'name': recipes.MODELS['sdxl_pixel_art']['name'], 'family': 'sdxl',
+                                  'profiles': ['sdxl_base', 'sdxl_juggernaut'], 'trigger': 'pixel art'}]
+        return web.json_response(result)
+
+    @routes.post(PREFIX + "/loras/refresh")
+    @endpoint
+    async def refresh_lora_info(request):
+        from .civitai_downloads import register_included_lora_info
+        await asyncio.to_thread(register_included_lora_info, models.MODEL_ROOT)
+        return await local_loras(request)
 
     @routes.post(PREFIX + "/client")
     @endpoint
@@ -212,6 +234,18 @@ def register(routes, endpoint, resources, native_queue):
         changes = memory_policy.project_patch(project, body["changes"], memory_policy.hardware_info())
         return web.json_response(project_public(store().update_project(request.match_info["project"],
             body["expected_revision"], changes)))
+
+    @routes.patch(PREFIX + "/projects/{project}/pipeline")
+    @endpoint
+    async def pipeline_settings(request):
+        body=await request.json()
+        return web.json_response(project_public(store().update_pipeline(request.match_info["project"],body["expected_revision"],body.get("changes",{}))))
+
+    @routes.post(PREFIX + "/projects/{project}/pipeline/select")
+    @endpoint
+    async def pipeline_select(request):
+        body=await request.json()
+        return web.json_response(project_public(store().select_pipeline_artifact(request.match_info["project"],body["expected_revision"],body["artifact_id"])))
 
     @routes.post(PREFIX + "/projects/{project}/reuse")
     @endpoint
@@ -352,6 +386,8 @@ def register(routes, endpoint, resources, native_queue):
     @routes.post(PREFIX + "/projects/{project}/jobs")
     @endpoint
     async def start_job(request):
+        from .foundry.workflows.image_to_3d.runs import busy as foundry_busy
+        if foundry_busy():raise ValueError("The Foundry wizard is running. Wait for it to finish.")
         body = await request.json()
         return web.json_response(coordinator().start(request.match_info["project"], body["expected_revision"],
             body["kind"], body["request_key"], body.get("payload", {})))
@@ -403,11 +439,29 @@ def register(routes, endpoint, resources, native_queue):
     async def export_package(request):
         body = await request.json()
         result = await asyncio.to_thread(package_export.create_package, store(), request.match_info["project"],
-            body["expected_revision"], body["artifact_ids"])
+            body["expected_revision"], body["artifact_ids"], body.get("audience", "agent"))
         return web.json_response(artifact_public(result))
+
+    @routes.post(PREFIX + "/projects/{project}/blender")
+    @endpoint
+    async def open_in_blender(request):
+        from .blender_handoff import open_mesh
+        body = await request.json()
+        library = store()
+        project = library._checked_project(request.match_info["project"], body["expected_revision"])
+        artifact = artifact_record(project, body["artifact_id"])
+        if artifact["kind"] != "mesh" or artifact.get("stale"):
+            raise ValueError("Choose a current exported mesh to open in Blender.")
+        path = library.path(project["id"], artifact["file"])
+        if not path.is_file() or digest(path) != artifact["sha256"]:
+            raise ValueError("The mesh changed on disk. Export it again before opening it in Blender.")
+        return web.json_response(await asyncio.to_thread(open_mesh, path))
 
     @routes.post(PREFIX + "/release")
     @endpoint
     async def release(request):
         await resources().barrier()
         return web.json_response(await resources().release("manual single-image controls release"))
+
+    from .material_routes import register as register_material_routes
+    register_material_routes(routes,endpoint,coordinator)

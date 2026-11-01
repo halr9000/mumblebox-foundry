@@ -76,6 +76,24 @@ class MCPAdapterTests(unittest.TestCase):
         self.assertEqual(caught.exception.status, 409)
         self.assertEqual(caught.exception.details, payload)
 
+    def test_pipeline_controls_and_material_choices_use_project_owner(self):
+        self.assertTrue(callable(getattr(self.client,"save_pipeline",None)),"Agent must reach the shared pipeline settings owner")
+        with patch.object(self.client.opener,'open',side_effect=self.response):
+            self.client.save_pipeline('project1',7,{'texture_provider':'trellis2'})
+            self.client.select_pipeline_artifact('project1',8,'paint1')
+            self.client.save_material_choices('project1','session1',3,{'version':1,'regions':[]})
+        self.assertTrue(self.calls[0].full_url.endswith('/projects/project1/pipeline'))
+        self.assertEqual(self.calls[0].method,'PATCH')
+        self.assertTrue(self.calls[1].full_url.endswith('/pipeline/select'))
+        self.assertEqual(json.loads(self.calls[2].data)['expected_draft_revision'],3)
+
+    def test_asset_export_audience_is_explicit_and_agent_default_remains_strict(self):
+        with patch.object(self.client.opener,'open',side_effect=self.response):
+            self.client.export_package('project1',7,['mesh1'],audience='asset')
+            self.client.export_package('project1',7,['mesh1'])
+        self.assertEqual(json.loads(self.calls[0].data)['audience'],'asset')
+        self.assertEqual(json.loads(self.calls[1].data)['audience'],'agent')
+
 
 if __name__ == '__main__':
     unittest.main()

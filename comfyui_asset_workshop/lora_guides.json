@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "guides": [
+    {
+      "model_key": "klein4_depth", "guide_revision": 1,
+      "model_name": "RefControl depth · Klein 4B", "creator": "thedeoxen",
+      "family": "klein4", "profiles": ["klein4_base"], "base_model": "FLUX.2 Klein Base 4B",
+      "license": "Apache 2.0", "triggers": ["refcontrol"],
+      "description": "Moves a subject into the pose and composition of a depth map while drawing its appearance from a reference image.",
+      "guide": {
+        "Inputs": "Depth image first, appearance image second. This needs a prepared depth guide, not just a text description.",
+        "Strength": "Author recommends 0.8–1.0.",
+        "Image model settings": "The author's card suggests about 50 steps and CFG 4 for Base. Foundry's separate guided-angle recipe uses the supplied example graph's 20 steps and CFG 5; keep the complete recipe together.",
+        "Watch for": "Large differences in scale or proportions between the depth map and reference can damage the result. Use the 4B Base model."
+      }
+    },
+    {
+      "model_key": "klein9_depth", "guide_revision": 1,
+      "model_name": "RefControl depth · Klein 9B", "creator": "thedeoxen",
+      "family": "klein9", "profiles": ["klein_base"], "base_model": "FLUX.2 Klein Base 9B",
+      "license": "Apache 2.0", "triggers": ["refcontrol"],
+      "description": "Uses a depth map to guide pose and structure, with a second image supplying the subject's appearance.",
+      "guide": {
+        "Inputs": "Depth image first, appearance image second. Prepare the depth image before choosing this adapter.",
+        "Strength": "Author recommends 0.8–1.0.",
+        "Image model settings": "The model card suggests about 50 steps and CFG 4 for Base. Foundry's guided-angle recipe has its own complete settings.",
+        "Watch for": "Keep object scale and proportions similar across the two inputs. This is the 9B Base adapter, not the 4B version."
+      }
+    },
+    {
+      "model_key": "qwen21_anyangle", "guide_revision": 1,
+      "model_name": "AnyAngle · Qwen Image 2.1", "creator": "lilylilith",
+      "family": "qwen21", "profiles": ["qwen21"], "base_model": "Qwen Image 2.1",
+      "license": "Apache 2.0", "triggers": [],
+      "description": "Transfers a camera view from a rough 3D render to an original image while trying to retain its visual style.",
+      "guide": {
+        "Inputs": "An original image plus a coarse color render at the desired camera angle. Foundry's guided-angle route supplies those roles; selecting this LoRA alone does not create the render.",
+        "Strength": "Author recommends 1.0.",
+        "Image model settings": "CFG 3 and at least 20 steps. Use the author's edit instruction and the documented reference ordering.",
+        "Watch for": "A badly shaped coarse model, deformed faces, or low-resolution inputs can transfer those problems into the result."
+      }
+    },
+    {
+      "model_key": "qwen21_angles", "guide_revision": 1,
+      "model_name": "Multiple Angles v2 · Qwen Image 2.1", "creator": "akhaliq",
+      "family": "qwen21", "profiles": ["qwen21"], "base_model": "Qwen Image 2.1",
+      "license": "Apache 2.0", "triggers": ["<mva>"],
+      "description": "Changes an object's camera view from a reference photo using named azimuth and elevation labels. This is the v2 step-1500 adapter.",
+      "guide": {
+        "Inputs": "One clear reference image and an angle instruction.",
+        "Example": "<mva> back view, eye-level shot",
+        "Strength": "Start at 1.0; the author recommends 0.8–1.0.",
+        "Image model settings": "Published example: 40 steps, CFG 1.",
+        "Watch for": "Use the named camera labels in the source guide. Arbitrary numerical angles are not parsed. Training used 512-pixel images; exact geometry and camera pose still need review."
+      }
+    },
+    {
+      "model_key": "qwen2511_angles", "guide_revision": 1,
+      "model_name": "Multiple Angles · Qwen Edit 2511", "creator": "fal",
+      "family": "qwen2511", "profiles": ["qwen2511"], "base_model": "Qwen Image Edit 2511",
+      "license": "Apache 2.0", "triggers": ["<sks>"],
+      "description": "Re-angles a reference image using a vocabulary of viewpoints, elevations, and framing distances.",
+      "guide": {
+        "Inputs": "A reference image with a clear subject and an angle instruction.",
+        "Example": "<sks> back view eye-level shot medium shot",
+        "Strength": "Start at 0.9; author recommends 0.8–1.0.",
+        "Camera choices": "Eight directions, four elevations including low-angle, and three framing distances. The source page lists the supported phrases.",
+        "Watch for": "Use Qwen Edit 2511. This is different from the Qwen Image 2.1 adapter and its <mva> syntax. Generated viewpoints remain estimates."
+      }
+    },
+    {
+      "model_key": "flux3_angles", "guide_revision": 1,
+      "model_name": "Multiple Angles · FLUX 3 Base", "creator": "akhaliq",
+      "family": "flux3", "profiles": ["flux3_base"], "base_model": "FLUX 3 Image Klein Base",
+      "license": "FLUX Kommunity License", "triggers": ["<mva>"],
+      "description": "Re-renders a reference subject from another camera position using named directions and elevations.",
+      "guide": {
+        "Inputs": "A reference image plus a raw angle instruction. The published workflow disables prompt upsampling.",
+        "Example": "<mva> right side view, elevated shot",
+        "Image model settings": "The author uses the undistilled Base model and 50 steps. A separate strength recommendation is not published.",
+        "Watch for": "Trained on synthetic renders. The author reports that some ordinary objects can be replaced by invented subjects or scenes. Check identity carefully."
+      }
+    },
+    {
+      "model_key": "klein_angles", "guide_revision": 1,
+      "model_name": "Multiple Angles · Klein 9B", "creator": "Alexali",
+      "family": "klein9", "profiles": ["klein_base", "klein_distilled", "klein_kv"], "base_model": "FLUX.2 Klein 9B family",
+      "license": "Apache 2.0", "triggers": [],
+      "description": "An experimental angle adapter distributed for the Klein 9B family. Its tensors match this family, but the publisher's model card is empty.",
+      "guide": {
+        "Published guidance": "No verified trigger phrase, strength recommendation, input ordering, or usage instructions are available from the publisher.",
+        "Watch for": "Foundry's default strength is 1.0, not an author recommendation. Treat camera accuracy and behavior across variants as unverified; inspect the result before using it."
+      }
+    },
+    {
+      "model_key": "sdxl_pixel_art", "guide_revision": 1,
+      "model_name": "Pixel Art XL", "creator": "nerijs",
+      "family": "sdxl", "profiles": ["sdxl_base", "sdxl_juggernaut"], "base_model": "SDXL 1.0",
+      "license": "CreativeML OpenRAIL-M", "triggers": [],
+      "description": "Gives generated images a pixel-art appearance, suitable for stylized concept images and game-art references.",
+      "guide": {
+        "Prompt": "The author says no trigger word is required. Describe the subject normally.",
+        "Image model settings": "Use your SDXL settings. The source's 8-step, CFG 1.5 and strength 1.2 example also uses a separate LCM adapter; those are not generic settings for this LoRA alone.",
+        "Finishing": "The author suggests reducing image dimensions by eight with nearest-neighbor resampling for crisp pixel blocks.",
+        "Watch for": "This styles the image; it does not create pixel geometry or guarantee a particular mesh style."
+      }
+    },
+    {
+      "name": "klein4-paper-diorama.safetensors", "guide_revision": 1,
+      "repo": "rehan-fal/flux-2-klein-4b-paper-diorama-lora", "revision": "b16754680c2063b0d6fd18486f3bc078136be88f",
+      "sha256": "a370e6fd7ee9b77bb569fe48637fe46a1708784f10af4f5aabe173a236049aad",
+      "model_name": "Paper Diorama · Klein 4B", "creator": "rehan-fal",
+      "family": "klein4", "profiles": ["klein4"], "base_model": "FLUX.2 Klein 4B distilled",
+      "license": "Apache 2.0", "triggers": ["pprdrma style,"],
+      "description": "Creates a miniature paper-diorama look with a crafted, layered-paper appearance.",
+      "guide": {
+        "Prompt": "Put the trigger phrase at the beginning, followed by your subject description.",
+        "Strength": "About 1.0 is the author's serving recommendation; the examples also compare 0.7.",
+        "Image model settings": "Distilled Klein 4B, 4 steps. It was trained on Base 4B for use with the distilled model.",
+        "Watch for": "This is an appearance adapter. Folded-paper details in the image may influence the reconstructed shape."
+      }
+    },
+    {
+      "name": "klein9-arcane-style.safetensors", "guide_revision": 1,
+      "repo": "DeverStyle/Flux.2-Klein-Loras", "revision": "96237bf014e53e2baf24e3b756cdf20c4ca18953",
+      "sha256": "18c7c42859ddef8913244823858207c6eb1600c2fb7d9180841e8cd39fcec9fc",
+      "model_name": "Arcane style · Klein 9B", "creator": "DeverStyle",
+      "family": "klein9", "profiles": ["klein_distilled"], "base_model": "FLUX.2 Klein 9B distilled",
+      "license": "Apache 2.0", "triggers": ["arcane_visual_style"],
+      "description": "Applies an Arcane-inspired illustrated style to newly generated images or reference-image edits.",
+      "guide": {
+        "Prompt": "Include the trigger phrase. For an edit, ask to transform the image into that style and state what should stay unchanged.",
+        "Image model settings": "The author specifies distilled Klein 9B. A strength recommendation is not published; Foundry starts at 1.0.",
+        "Watch for": "Editing can change the original pose or details. Review the image before preparing it for 3D."
+      }
+    },
+    {
+      "name": "flux3-distilled-photo-aesthetics.safetensors", "guide_revision": 1,
+      "repo": "SimpleTuner/flux-3-klein-image-photo-aesthetics-distilled-assisted-1024-v2-kohaku-fa", "revision": "ff8d62e1ecaedfef241dbdc9af34180cb3f7549f",
+      "sha256": "4be4e1f60d259ead84fd8a47feaeb581d203ef8a6b6281a331cd4c9fa30cf146",
+      "model_name": "Photo Aesthetics v2 · FLUX 3", "creator": "SimpleTuner",
+      "family": "flux3", "profiles": ["flux3_distilled"], "base_model": "FLUX 3 Image Klein distilled",
+      "license": "Other — see source and base-model terms", "triggers": [],
+      "description": "A photographic-aesthetics adaptation for the distilled FLUX 3 Image Klein model. This local file matches the 1024 v2 Kohaku-FA release.",
+      "guide": {
+        "Image model settings": "Published validation: 16 steps, CFG 1.0, 512- or 1024-pixel images.",
+        "Prompt and strength": "No required trigger or separate strength recommendation is published. Foundry's initial strength is 1.0.",
+        "Watch for": "This changes image appearance. It does not add camera measurements, multiview fusion, or mesh reconstruction."
+      }
+    }
+  ]
+}

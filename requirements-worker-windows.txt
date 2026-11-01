@@ -1,0 +1,18 @@
+# Isolated Python 3.13 worker only. Install CUDA PyTorch and matching upstream wheels separately.
+triton-windows==3.6.0.post26
+transformers==4.57.6
+safetensors==0.8.0
+trimesh==5.2.0
+pyQuadriFlow==0.2.0
+pynanoinstantmeshes==0.0.3
+pymeshlab==2025.7.post1
+meshlib==3.1.4.297
+scipy==1.18.1
+Pillow==12.3.0
+numpy==2.5.2
+opencv-python==5.0.0.93
+einops==0.8.2
+easydict==1.13
+huggingface-hub==0.36.2
+requests
+rtree

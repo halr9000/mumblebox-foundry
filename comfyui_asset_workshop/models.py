@@ -74,19 +74,33 @@ def verify(keys):
         atomic_json(receipts_path, receipts)
 
 
-def download_one(model):
+def download_one(model, *, destination_root=None):
     source = {"model": model["name"], "repo_url": "https://huggingface.co/" + quote(model["repo"], safe="/"),
               "license_url": model.get("license_url")}
     DOWNLOAD.update(source=source, recovery=None)
-    folders = [Path(p).resolve() for p in folder_paths.get_folder_paths(model["category"])]
-    root = next((p for p in folders if p.is_relative_to(MODEL_ROOT)),
-                MODEL_ROOT / model["category"]).resolve()
-    if not root.is_relative_to(MODEL_ROOT):
-        raise ValueError("This model folder points outside this Comfy installation. Choose a local model folder before downloading.")
+    if destination_root is None:
+        folders = [Path(p).resolve() for p in folder_paths.get_folder_paths(model["category"])]
+        root = next((p for p in folders if p.is_relative_to(MODEL_ROOT)),
+                    MODEL_ROOT / model["category"]).resolve()
+        if not root.is_relative_to(MODEL_ROOT):
+            raise ValueError("This model folder points outside this Comfy installation. Choose a local model folder before downloading.")
+    else:
+        # Only the explicitly configured isolated texture snapshot root is
+        # permitted. HTTP callers cannot supply arbitrary download destinations.
+        from .pipeline_capabilities import validate_runtime
+        config = validate_runtime(configuration().get("pipeline_runtime", {}))
+        allowed = config.get("trellis_models")
+        root = Path(destination_root).resolve()
+        if not allowed or root != Path(allowed).resolve():
+            raise ValueError("Worker downloads must use the configured texture model folder.")
     root.mkdir(parents=True, exist_ok=True)
     target = contained(root, model["name"])
+    target.parent.mkdir(parents=True, exist_ok=True)
     if target.exists():
         if target.stat().st_size == model["size"] and digest(target) == model["sha256"]:
+            if model['category'] == 'loras':
+                from .civitai_downloads import register_included_lora_info
+                register_included_lora_info(MODEL_ROOT, [model['name']])
             return
         raise ValueError(f"{target.name} already exists with different content; it will not be replaced.")
     # This subfolder belongs only to Asset Workshop downloads.
@@ -146,6 +160,9 @@ def download_one(model):
         raise ValueError("The destination appeared during download; refusing to replace it.")
     # Windows rename fails if target already exists; same volume as destination.
     os.rename(part, target)
+    if model['category'] == 'loras':
+        from .civitai_downloads import register_included_lora_info
+        register_included_lora_info(MODEL_ROOT, [model['name']])
     DOWNLOAD["phase"] = "download"
 
 

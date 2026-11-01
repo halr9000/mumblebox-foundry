@@ -284,8 +284,8 @@
       "size": 1215214176,
       "category": "clip_vision",
       "name": "dino_v3_L_naf_fp32.safetensors",
-      "license": "mit",
-      "license_url": "https://huggingface.co/Comfy-Org/Pixal3D/blob/f37641be376725d324c56626007cc477f1249a69/README.md"
+      "license": "dinov3-license",
+      "license_url": "https://github.com/facebookresearch/dinov3/blob/ffb4bb89c6558ca3244655c25a3955d01788b732/LICENSE.md"
     },
     "birefnet": {
       "repo": "Comfy-Org/BiRefNet",
@@ -441,5 +441,142 @@
       "license": "creativeml-openrail-m",
       "license_url": "https://huggingface.co/nerijs/pixel-art-xl/blob/8bf4a4d9ea283e00a51fafda8e0539f8248ea037/README.md"
     }
+  },
+  "pipeline_resources": [
+    {
+      "id": "trellis2-final-mesh-texture",
+      "model": "microsoft/TRELLIS.2-4B",
+      "source": "https://github.com/microsoft/TRELLIS.2",
+      "wrapper": "https://github.com/visualbruno/ComfyUI-Trellis2",
+      "wrapper_revision": "b0e84c0f29857a444e8bcb5b9be2ea218e96efd0",
+      "license": "MIT",
+      "license_url": "https://github.com/microsoft/TRELLIS.2/blob/main/LICENSE",
+      "isolation": "Configured worker Python; never install its torch into the host"
+    },
+    {
+      "id": "stable-materials",
+      "model": "gvecchio/StableMaterials",
+      "revision": "4d452731535bd5c74261d6645623a573326f6f36",
+      "source": "https://huggingface.co/gvecchio/StableMaterials",
+      "license": "OpenRAIL; see model card and repository license",
+      "license_url": "https://huggingface.co/gvecchio/StableMaterials",
+      "mode": "LCM4step",
+      "isolation": "Configured worker Python"
+    },
+    {
+      "id": "hi3d-refine",
+      "source": "https://github.com/hi3d-official/Hi3Dv1.0",
+      "revision": "23dcc684bc6e1fab86ecafb99ec5270edad122f9",
+      "model_revision": "705fc0901c5d896cdcbf1dbf1feaa173e62bdd3a",
+      "isolation": "Configured local Hi3D workbench service",
+      "model_source": "https://huggingface.co/t8star/Hi3d-Comfy",
+      "license": "Hi3D Open License Agreement Version 1.0",
+      "license_url": "https://github.com/hi3d-official/Hi3Dv1.0/blob/23dcc684bc6e1fab86ecafb99ec5270edad122f9/LICENSE",
+      "notice": "Powered by Hi3D 1.0 - http://hi3d.ai/"
+    }
+  ],
+  "worker_models": {
+    "trellis_texture": [
+      {
+        "name": "microsoft/TRELLIS.2-4B/ckpts/shape_enc_next_dc_f16c32_fp16.json",
+        "category": "worker",
+        "repo": "microsoft/TRELLIS.2-4B",
+        "revision": "af44b45f2e35a493886929c6d786e563ec68364d",
+        "file": "ckpts/shape_enc_next_dc_f16c32_fp16.json",
+        "size": 653,
+        "sha256": "5a960a5c419d70f8d4a7a6b6e52ae689cd948c88bd7ed92346adfbf82cd12007",
+        "license_url": "https://huggingface.co/microsoft/TRELLIS.2-4B/blob/af44b45f2e35a493886929c6d786e563ec68364d/README.md"
+      },
+      {
+        "name": "microsoft/TRELLIS.2-4B/ckpts/shape_enc_next_dc_f16c32_fp16.safetensors",
+        "category": "worker",
+        "repo": "microsoft/TRELLIS.2-4B",
+        "revision": "af44b45f2e35a493886929c6d786e563ec68364d",
+        "file": "ckpts/shape_enc_next_dc_f16c32_fp16.safetensors",
+        "size": 708797208,
+        "sha256": "f37c5ff5b983b68e9946060000f09bc131f3e84318a2c8b7430a81e4b4636c41",
+        "license_url": "https://huggingface.co/microsoft/TRELLIS.2-4B/blob/af44b45f2e35a493886929c6d786e563ec68364d/README.md"
+      },
+      {
+        "name": "microsoft/TRELLIS.2-4B/ckpts/slat_flow_imgshape2tex_dit_1_3B_1024_bf16.json",
+        "category": "worker",
+        "repo": "microsoft/TRELLIS.2-4B",
+        "revision": "af44b45f2e35a493886929c6d786e563ec68364d",
+        "file": "ckpts/slat_flow_imgshape2tex_dit_1_3B_1024_bf16.json",
+        "size": 458,
+        "sha256": "31f4fdad9974930e5e9324ac9dfb6ef7de6b30cea51854ba515ef827a8d353b2",
+        "license_url": "https://huggingface.co/microsoft/TRELLIS.2-4B/blob/af44b45f2e35a493886929c6d786e563ec68364d/README.md"
+      },
+      {
+        "name": "microsoft/TRELLIS.2-4B/ckpts/slat_flow_imgshape2tex_dit_1_3B_1024_bf16.safetensors",
+        "category": "worker",
+        "repo": "microsoft/TRELLIS.2-4B",
+        "revision": "af44b45f2e35a493886929c6d786e563ec68364d",
+        "file": "ckpts/slat_flow_imgshape2tex_dit_1_3B_1024_bf16.safetensors",
+        "size": 2584672728,
+        "sha256": "580401269059a339b8318ab9ced459a13ba63391721c83a6c383198c29e77686",
+        "license_url": "https://huggingface.co/microsoft/TRELLIS.2-4B/blob/af44b45f2e35a493886929c6d786e563ec68364d/README.md"
+      },
+      {
+        "name": "microsoft/TRELLIS.2-4B/ckpts/tex_dec_next_dc_f16c32_fp16.json",
+        "category": "worker",
+        "repo": "microsoft/TRELLIS.2-4B",
+        "revision": "af44b45f2e35a493886929c6d786e563ec68364d",
+        "file": "ckpts/tex_dec_next_dc_f16c32_fp16.json",
+        "size": 705,
+        "sha256": "22074e4ab5b28e2b72d33a3fe61bf416134b89e12d0fc5c729f37da75da0c4d1",
+        "license_url": "https://huggingface.co/microsoft/TRELLIS.2-4B/blob/af44b45f2e35a493886929c6d786e563ec68364d/README.md"
+      },
+      {
+        "name": "microsoft/TRELLIS.2-4B/ckpts/tex_dec_next_dc_f16c32_fp16.safetensors",
+        "category": "worker",
+        "repo": "microsoft/TRELLIS.2-4B",
+        "revision": "af44b45f2e35a493886929c6d786e563ec68364d",
+        "file": "ckpts/tex_dec_next_dc_f16c32_fp16.safetensors",
+        "size": 948458812,
+        "sha256": "97ea69addea2ecd9312910f5f548234665eef51c088386180b7cd5b258645e3c",
+        "license_url": "https://huggingface.co/microsoft/TRELLIS.2-4B/blob/af44b45f2e35a493886929c6d786e563ec68364d/README.md"
+      },
+      {
+        "name": "microsoft/TRELLIS.2-4B/pipeline.json",
+        "category": "worker",
+        "repo": "microsoft/TRELLIS.2-4B",
+        "revision": "af44b45f2e35a493886929c6d786e563ec68364d",
+        "file": "pipeline.json",
+        "size": 4186,
+        "sha256": "222c359ab1ed9bc6735a640a34f95d47f8681b9bc4aaa101bfb80274676253c6",
+        "license_url": "https://huggingface.co/microsoft/TRELLIS.2-4B/blob/af44b45f2e35a493886929c6d786e563ec68364d/README.md"
+      },
+      {
+        "name": "facebook/dinov3-vitl16-pretrain-lvd1689m/config.json",
+        "category": "worker",
+        "repo": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+        "revision": "ea8dc2863c51be0a264bab82070e3e8836b02d51",
+        "file": "config.json",
+        "size": 745,
+        "sha256": "135ecd23e34a70b6fbed8b083fdecb319b7e3a54e3d849258bbe4ddcf1783bb5",
+        "license_url": "https://huggingface.co/facebook/dinov3-vitl16-pretrain-lvd1689m/blob/ea8dc2863c51be0a264bab82070e3e8836b02d51/README.md"
+      },
+      {
+        "name": "facebook/dinov3-vitl16-pretrain-lvd1689m/model.safetensors",
+        "category": "worker",
+        "repo": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+        "revision": "ea8dc2863c51be0a264bab82070e3e8836b02d51",
+        "file": "model.safetensors",
+        "size": 1212559808,
+        "sha256": "dcb2e45127cccbf1601e5f42fef165eea275c8e5213197e8dcf3f48822718179",
+        "license_url": "https://huggingface.co/facebook/dinov3-vitl16-pretrain-lvd1689m/blob/ea8dc2863c51be0a264bab82070e3e8836b02d51/README.md"
+      },
+      {
+        "name": "facebook/dinov3-vitl16-pretrain-lvd1689m/preprocessor_config.json",
+        "category": "worker",
+        "repo": "facebook/dinov3-vitl16-pretrain-lvd1689m",
+        "revision": "ea8dc2863c51be0a264bab82070e3e8836b02d51",
+        "file": "preprocessor_config.json",
+        "size": 585,
+        "sha256": "960c41d1f3a7778b936365769a2d90550b318a6c0a53a0296957adacfe5e0dd7",
+        "license_url": "https://huggingface.co/facebook/dinov3-vitl16-pretrain-lvd1689m/blob/ea8dc2863c51be0a264bab82070e3e8836b02d51/README.md"
+      }
+    ]
   }
 }

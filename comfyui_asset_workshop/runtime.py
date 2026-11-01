@@ -43,3 +43,11 @@ def request_startup_headroom(value):
     atomic_json(CONFIG, data)
     return {"requested_gb": value, "launch_argument": f"--vram-headroom {value:g}",
             "applied": False, "instruction": "Set this argument in your Comfy launcher's startup settings, then restart when ready. Saving the request here does not restart or alter the launcher."}
+
+
+def set_pipeline_runtime(value):
+    from .pipeline_capabilities import validate_runtime
+    data=configuration()
+    data["pipeline_runtime"]=validate_runtime(value)
+    atomic_json(CONFIG,data)
+    return data

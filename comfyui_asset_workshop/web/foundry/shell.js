@@ -1,0 +1,151 @@
+import {el,button,icon} from "./dom.js";
+import {activityState,loadedState} from "./activity-state.js";
+import {activity} from "./activity.js";
+import {UpdateChecks} from "./updates.js";
+import {resourceMeter} from "./telemetry.js";
+import {request,pollResources} from "./services.js";
+import {dialog} from "./dialogs.js";
+import {home} from "./views/home.js";
+import {showWorkflow} from "./graph-adapter.js";
+import {api} from "/scripts/api.js";
+import {app} from "/scripts/app.js";
+
+export class FoundryShell {
+    constructor(host,node) {
+        this.node=node; this.host=host; this.tab="Choose a Workflow";
+        this.shadow=host.attachShadow({mode:"open"});
+        for (const file of ["theme.css","layout.css"]) this.shadow.append(el("link",{rel:"stylesheet",href:new URL(file,import.meta.url).href}));
+        this.root=el("div",{class:"foundry","data-theme":matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"});
+        this.shadow.append(this.root);
+        // OrbitControls receives pointerup at the shadow root. Let releases
+        // reach it; swallowing them leaves the viewer stuck in a drag.
+        for(const event of ["pointerdown","click","dblclick","wheel","keydown","contextmenu"])
+            this.root.addEventListener(event,e=>e.stopPropagation());
+        this.build();
+        this.updates=new UpdateChecks(this);
+        this.bootstrap();
+        this.stopPolling=pollResources(status=>this.resources(status),()=>this.resources(null));
+        this.agentRunHandler=event=>{
+            if(this.node.graph!==app.graph||!this.host.isConnected)return;
+            const id=event.detail?.id;
+            if(typeof id==="string"&&/^[a-f0-9]{32}$/.test(id))this.openWizard({runId:id});
+        };
+        api.addEventListener("mumblebox-foundry-run",this.agentRunHandler);
+    }
+    build() {
+        this.version=el("small",{},"Interface loading");
+        const languages=el("select",{class:"language","aria-label":"Language"},el("option",{value:"en"},"English"),
+            ...["Korean","Japanese","Mandarin","Spanish","Portuguese","German"].map(name=>el("option",{disabled:true},name+" — Coming soon")));
+        this.themeButton=button([icon("contrast",18),"Theme"],()=>this.setTheme(this.root.dataset.theme==="dark"?"light":"dark"));
+        this.themeButton.setAttribute("aria-label","Switch color theme");
+        this.settingsButton=button([icon("gear",18),"Settings"],()=>this.settings());
+        const donate=button("Donate",()=>{}, {disabled:true,title:"Donation link coming soon"});
+        const identity=el("div",{class:"identity"},el("div",{class:"brand"},el("div",{class:"brand-lockup"},
+            el("h1",{},el("img",{class:"brand-logo",src:new URL("../assets/foundry/logo-approved.png",import.meta.url).href,alt:"Mumblebox 3D Asset Foundry",width:2172,height:724})),this.version)),
+            el("div",{class:"header-actions"},languages,this.themeButton,this.settingsButton,donate));
+        this.vram=resourceMeter("VRAM");this.ram=resourceMeter("RAM");this.cpu=resourceMeter("CPU",{percent:true});
+        this.loadedDot=el("span",{class:"loaded-dot","aria-hidden":"true"});
+        this.loadedLabel=el("small",{},"Model state unavailable");
+        this.unload=button([this.loadedDot,"Unload Models"],()=>this.unloadModels(),{disabled:true});
+        this.activity=activity();
+        this.resourceBar=el("div",{class:"resources"},this.vram.element,this.ram.element,this.cpu.element,
+            this.activity.element,el("div",{class:"model-residency"},this.unload,this.loadedLabel));
+        this.nav=el("nav",{class:"tabs",role:"tablist","aria-label":"Foundry sections"});
+        this.tabs=["Choose a Workflow","Images","History","Integrations","About"];
+        this.tabs.forEach((name,i)=>this.nav.append(button(name,()=>this.open(name),{class:i===2?"secondary-start":"",role:"tab","aria-selected":name===this.tab,tabindex:name===this.tab?0:-1})));
+        this.nav.addEventListener("keydown",e=>{
+            if(!["ArrowRight","ArrowLeft","Home","End"].includes(e.key))return;
+            e.preventDefault();
+            const index=this.tabs.indexOf(this.tab);
+            const next=e.key==="Home"?0:e.key==="End"?this.tabs.length-1:(index+(e.key==="ArrowRight"?1:-1)+this.tabs.length)%this.tabs.length;
+            this.open(this.tabs[next]);this.nav.children[next].focus();
+        });
+        this.content=el("main",{class:"content",role:"tabpanel","aria-label":this.tab});
+        this.notice=el("div",{class:"status",role:"status","aria-live":"polite"},"Loading Foundry services…");
+        this.root.append(el("header",{class:"top"},identity,this.resourceBar),this.nav,this.content,this.notice);
+        this.resources(null);this.open(this.tab);
+    }
+    async bootstrap() {
+        try {
+            this.data=await request("bootstrap");
+            this.version.textContent="v"+this.data.version;
+            if(this.data.preferences.theme) await this.setTheme(this.data.preferences.theme,false);
+            else await this.setTheme(this.root.dataset.theme,false);
+            this.message("Local workspace · Image-to-3D workflow");
+            this.open(this.tab);
+            this.updates.startup();
+        } catch(error) {this.message(error.message,true);}
+    }
+    async setTheme(theme,save=true) {
+        this.root.dataset.theme=theme;
+        this.themeButton.title=theme==="dark"?"Switch to light theme":"Switch to dark theme";
+        this.themeButton.setAttribute("aria-pressed",String(theme==="dark"));
+        if(save)try{await request("preferences",{theme},{method:"PATCH"});}catch(e){this.message(e.message,true);}
+    }
+    message(text,error=false) {this.notice.textContent=text;this.notice.dataset.error=String(error);}
+    resources(data) {
+        const wasRunning=this.status?.running;
+        this.status=data;
+        this.vram.update(data?.vram_used,data?.vram_total);
+        this.ram.update(data?.ram_used,data?.ram_total);
+        this.cpu.update(data?.cpu_percent,100);
+        const residency=loadedState(data);
+        this.loadedDot.dataset.state=residency.state;this.loadedLabel.textContent=residency.label;
+        this.activity.update(activityState(this.unloading?{...data,resource_cleanup:{status:"releasing"}}:data));
+        this.unload.disabled=!data||data.running||this.unloading;
+        this.unload.title=data?.running?"Wait for the current run to finish":"Release loaded models and reusable model caches";
+        if(wasRunning&&!data?.running&&this.data)request("library/sync",{}).catch(e=>this.message(e.message,true));
+    }
+    async unloadModels() {
+        this.unloading=true;this.resources(this.status);
+        try{await request("/asset-workshop/release",{});this.message("Models unloaded. The resource readings will update shortly.");}
+        catch(error){this.message(error.message,true);}
+        finally{this.unloading=false;this.resources(this.status);}
+    }
+    async openImages(section="Create Images") {
+        this.imageSection=section;
+        await this.open("Images");
+    }
+    async open(name) {
+        this.viewDispose?.();this.viewDispose=null;
+        this.tab=name;this.sequence=(this.sequence||0)+1;const sequence=this.sequence;
+        [...this.nav.children].forEach((n,i)=>{n.setAttribute("aria-selected",String(this.tabs[i]===name));n.tabIndex=this.tabs[i]===name?0:-1;});
+        this.content.setAttribute("aria-label",name);this.content.scrollTop=0;
+        if(name==="Choose a Workflow"){this.content.replaceChildren(home(this));return;}
+        this.content.replaceChildren(el("p",{class:"muted"},"Loading "+name.toLowerCase()+"…"));
+        try {
+            const files={"About":"about","History":"library","Images":"images","Integrations":"integrations"};
+            const module=await import("./views/"+files[name]+".js");
+            if(sequence!==this.sequence)return;
+            const view=await module.render(this,"mesh");
+            if(sequence!==this.sequence){view.dispose?.();return;}
+            this.content.replaceChildren(view.element||view);this.viewDispose=view.dispose;
+        } catch(error) {if(sequence===this.sequence)this.content.replaceChildren(el("p",{},error.message),button("Retry",()=>this.open(name)));}
+    }
+
+    async openWizard({resume=false,runId=null}={}){
+        this.viewDispose?.();this.viewDispose=null;this.sequence=(this.sequence||0)+1;
+        const sequence=this.sequence;
+        this.tab="Choose a Workflow";
+        this.content.replaceChildren(el("p",{},"Opening the image-to-3D workflow…"));
+        let wizard;
+        try{
+            const {Wizard}=await import("./wizard/controller.js");
+            wizard=new Wizard(this,{resume,runId});
+            const element=await wizard.init();
+            if(sequence!==this.sequence){wizard.dispose();return;}
+            this.content.replaceChildren(element);
+            this.content.scrollTop=0;
+            [...this.nav.children].forEach((n,i)=>{n.setAttribute("aria-selected",String(i===0));n.tabIndex=i===0?0:-1;});
+            this.content.setAttribute("aria-label","Image to 3D wizard");
+            this.viewDispose=()=>wizard.dispose();
+            this.wizard=wizard;
+        }catch(error){wizard?.dispose();this.content.replaceChildren(el("p",{role:"alert"},error.message));}
+    }
+
+    async settings(options={}) {
+        try{const module=await import("./views/settings.js");return module.render(this,options);}
+        catch(error){this.message(error.message,true);}
+    }
+    dispose() {this.updates.dispose();api.removeEventListener("mumblebox-foundry-run",this.agentRunHandler);this.stopPolling?.();this.viewDispose?.();this.activeDialog?.close();this.root.remove();this.sequence++;}
+}
