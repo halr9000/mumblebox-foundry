@@ -42,6 +42,7 @@ class WizardRuns:
         self.selection_parser,self.variants=selection_parser,variants
         self.tasks={}
         self.runs={}
+        self.image_source_resolver=None
 
     def path(self, ident):
         if not isinstance(ident,str) or not re.fullmatch("[0-9a-f]{32}",ident):
@@ -103,7 +104,8 @@ class WizardRuns:
                     settings=resolve_settings(profile,overrides),
                     selection=self.selection(data.get("selection",DEFAULT_SELECTION)),
                     reference_prompt=bound["prompt"],turnaround_model=turnaround_model,
-                    turnaround_recipe=bound["recipe"],turnaround_guidance=bound["guidance"])
+                    turnaround_recipe=bound["recipe"],turnaround_guidance=bound["guidance"],
+                    image_creation=self.image_source_resolver(data.get('image_creation'),refs) if self.image_source_resolver else None)
 
     def create(self, data):
         run={**self.validate(data),"id":uuid.uuid4().hex,"created":time.time(),"status":"idle",
@@ -136,7 +138,7 @@ class WizardRuns:
         # No model state, credentials or unbounded history crosses this boundary.
         fields=("id","name","category","references","profile","overrides","settings","selection","status",
                 "stage","error","previews","package","cleanup","version","pending","events","reference_prompt","measurements","geometry_audit","dependency",
-                "turnaround_model","turnaround_recipe","turnaround_guidance","operation","request_id")
+                "turnaround_model","turnaround_recipe","turnaround_guidance","operation","request_id","image_creation")
         result=copy.deepcopy({k:run[k] for k in fields if k in run})
         if run.get("checkpoints",{}).get("print"):
             path=Path(run["checkpoints"]["print"])
@@ -397,4 +399,5 @@ class WizardRuns:
         lock=json.loads(Path(__file__).resolve().parents[3].joinpath("models.lock.json").read_text(encoding="utf-8"))["models"]
         lineage["models"]={key:{field:lock[key][field] for field in ("repo","file","revision","sha256")}
                            for key in (*spec["keys"],"birefnet","pixal_multiview","shape_vae","dino")}
+        if run.get('image_creation'):lineage['image_creation']=run['image_creation']
         return {"workflow_version":VERSION,"receipts":receipts,"production":lineage}

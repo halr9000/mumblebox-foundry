@@ -8,12 +8,12 @@ from mcp import Client
 from mcp.client.stdio import StdioServerParameters
 
 
-async def verify(server, run_id):
+async def verify(server, run_id, image_id=None):
     parameters = StdioServerParameters(command=sys.executable,
         args=[str(server)], cwd=str(server.parent))
     async with Client(parameters) as client:
         names = {tool.name for tool in (await client.list_tools()).tools}
-        assert len(names) == 9, names
+        assert len(names) == 23, names
         async def call(name, args):
             response = await client.call_tool(name, args)
             assert not response.is_error, response.content
@@ -34,16 +34,36 @@ async def verify(server, run_id):
         updated = await call('foundry_update_run', {'run_id': created['id'], 'configuration': config})
         assert updated['name'] == config['name']
         cancelled = await call('foundry_cancel', {'run_id': created['id']})
+        images=await call('foundry_image_capabilities',{})
+        image=await call('foundry_image_create',{'configuration':{'name':'MCP image contract check','description':'A blue vase','category':'general','model':'klein4'}})
+        image=await call('foundry_image_update',{'creation_id':image['id'],'configuration':{**image['config'],'name':'MCP image contract checked'}})
+        assert image['config']['name']=='MCP image contract checked'
+        await call('foundry_image_status',{'creation_id':image['id']})
+        await call('foundry_image_cancel',{'creation_id':image['id']})
+        await call('foundry_image_gallery',{'limit':2})
+        invalid_image=await client.call_tool('foundry_image_start',{'creation_id':image['id'],'request_id':'invalid-operation','operation':'shell'})
+        assert invalid_image.is_error
+        invalid_handoff=await client.call_tool('foundry_image_handoff',{'creation_id':image['id']})
+        assert invalid_handoff.is_error
+        if image_id:
+            saved=await call('foundry_image_save',{'creation_id':image_id})
+            assert saved['download_url'].endswith('/package')
+            handoff=await call('foundry_image_handoff',{'creation_id':image_id})
+            assert [r['role'] for r in handoff['references']]==['primary','back']
+            merged={**config,**handoff}
+            linked=await call('foundry_create_run',{'configuration':merged})
+            assert len(linked['image_creation']['images'])==2
         print(json.dumps({'status': 'PASS', 'transport': 'real stdio and installed HTTP',
             'tools': sorted(names), 'capability_fields': sorted(capabilities),
             'fixture_run': created['id'], 'shared_create_update': True,
             'cancel_status': cancelled['status'], 'invalid_operation_denied': True,
-            'package_metadata': True, 'inference_calls': 0}))
+            'package_metadata': True,'image_contract':True,'image_lineage':bool(image_id), 'inference_calls': 0}))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--server', type=Path, required=True)
     parser.add_argument('--run-id', required=True)
+    parser.add_argument('--image-id')
     args = parser.parse_args()
-    asyncio.run(verify(args.server.resolve(), args.run_id))
+    asyncio.run(verify(args.server.resolve(), args.run_id,args.image_id))

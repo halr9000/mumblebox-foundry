@@ -1,11 +1,14 @@
+import {imageMagnet} from './image-selection.js';
 // Selection tools and review stay in this dialog while the visible graph executes.
 export async function openImageEditor({element:el, sourceURL, title, model, generate, accept, stop, progress, download,
-                                      mode="image", initialMaskURL=null, prepareMask=null, keepLabel=null}) {
+                                      mode="image", initialMaskURL=null, prepareMask=null, keepLabel=null,
+                                      container=document.body,comparison=null,onSwitch=null}) {
     const foreground=mode==="foreground";
-    document.querySelector(".aw-image-editor")?.remove();
+    container.querySelector(".aw-image-editor")?.close();
     const source = new Image();
     source.src = sourceURL;
     await source.decode();
+    let magnet;
     const mask = document.createElement("canvas"), canvas = document.createElement("canvas");
     mask.width = canvas.width = source.naturalWidth;
     mask.height = canvas.height = source.naturalHeight;
@@ -27,7 +30,7 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
         context.putImageData(pixels,0,0);operations.push({tool:"initial"});
     }
     if(initialMaskURL)await loadInitialMask(initialMaskURL);
-    let tool = "rectangle", stroke = null, polygon = [], busy = false, candidate = null;
+    let tool = "rectangle", stroke = null, polygon = [], anchors = [], busy = false, candidate = null;
     let resultImage = null, display = "selection", zoom = 1, cursor = null, phase = 0;
     const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
     const fill = document.createElement("canvas"), outline = document.createElement("canvas"), ants = document.createElement("canvas");
@@ -44,6 +47,8 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
     replaceDetail.addEventListener("change",()=>rebuild());
     const button = (text, action, cls="") => el("button",{type:"button",class:cls,onclick:action},text);
     const paths = {
+        ellipse:'M12 4a10 8 0 1 0 0 16 10 8 0 0 0 0-16Z',
+        magnetic:'M5 4v9a7 7 0 0 0 14 0V4h-4v9a3 3 0 0 1-6 0V4Z',
         rectangle:"M4 4h16v16H4z", brush:"m14 5 5-3 3 3-9 10-4-4z M9 13c-6-1-2 7-7 7 6 2 10-1 9-5",
         polygon:"m5 5 14-2 2 14-10 4-8-9z M4 4h2v2H4z M18 2h2v2h-2z M20 16h2v2h-2z",
         finish:"m4 12 5 5L20 6", erase:"m4 12 9-9 8 8-9 9H9z M8 8l8 8 M12 20h9",
@@ -69,24 +74,25 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
     if(foreground) feather.addEventListener("input",()=>rebuild());
     const tools = {};
     const toolRow = el("div",{class:"row editor-tools",role:"toolbar","aria-label":"Selection tools"});
-    for (const [value,label] of Object.entries({rectangle:"Rectangle",brush:"Brush",polygon:"Polygon lasso",erase:"Erase"})) {
+    for (const [value,label] of Object.entries({rectangle:"Rectangle",ellipse:"Ellipse",brush:"Brush",polygon:"Polygon lasso",magnetic:"Magnetic lasso",erase:"Erase"})) {
         tools[value] = button(label,()=>{
-            if(value==="polygon" && tool==="polygon" && polygon.length) {finishPolygon();return;}
-            tool=value; stroke=null; polygon=[]; display="selection"; paint(); update();
+            if(['polygon','magnetic'].includes(value) && tool===value && polygon.length) {finishPolygon();return;}
+            tool=value; stroke=null; polygon=[]; anchors=[]; display="selection"; paint(); update();
         });
         labelButton(tools[value],label,value);
-        tools[value].title={rectangle:"Drag to select a rectangular area.",brush:foreground?"Paint parts of the object to keep.":"Paint the area to change.",polygon:"Click at least three points, then click this button again to finish.",erase:foreground?"Erase background from the kept area.":"Brush away part of the selection."}[value];
+        tools[value].title={rectangle:"Drag to select a rectangular area.",ellipse:"Drag to select an oval area.",magnetic:"Click anchors along an edge; the lasso follows nearby contrast. Click again to finish after three anchors.",brush:foreground?"Paint parts of the object to keep.":"Paint the area to change.",polygon:"Click at least three points, then click this button again to finish.",erase:foreground?"Erase background from the kept area.":"Brush away part of the selection."}[value];
         tools[value].setAttribute("aria-pressed",String(value===tool));
         toolRow.append(tools[value]);
     }
-    const undo = button("Undo selection",()=>{if(polygon.length) polygon.pop(); else operations.pop(); rebuild();});
-    const clear = button("Clear selection",()=>{operations.length=0; polygon=[]; stroke=null; rebuild();});
+    const undo = button("Undo selection",()=>{if(polygon.length)polygon.splice(anchors.pop()??Math.max(0,polygon.length-1));else operations.pop();rebuild();});
+    const clear = button("Clear selection",()=>{operations.length=0; polygon=[]; anchors=[]; stroke=null; rebuild();});
     const all = button("Select whole image",()=>{push({tool:"rectangle",points:[[0,0],[mask.width,mask.height]]});});
     labelButton(undo,"Undo selection","undo");labelButton(clear,"Clear selection","clear");labelButton(all,"Select whole image","all");
     toolRow.append(undo,clear,all);
     function finishPolygon() {
-        if(polygon.length<3) {status.textContent="Add at least three points to finish the polygon.";return;}
-        const points=polygon;polygon=[];push({tool:"polygon",points});
+        if(anchors.length<3) {status.textContent="Add at least three points to finish the polygon.";return;}
+        if(tool==='magnetic'){magnet??=imageMagnet(source);polygon.push(...magnet(polygon.at(-1),polygon[0]));}
+        const points=polygon;polygon=[];anchors=[];push({tool:"polygon",points});
         status.textContent=foreground?"Selection ready. Preview the cutout to check the kept area.":"Selection ready. Describe what you want to change.";
     }
     const show = el("div",{class:"row"});
@@ -141,7 +147,15 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
                 el("div",{class:"row"},keep,retry),
                 el("p",{class:"hint"},foreground?"Your original image stays unchanged. Keeping the cutout saves its transparency.":"Your original stays in use until you choose Keep this edit."),
                 el("div",{class:"row"},download(),resultDownload))));
-    document.body.append(dialog);
+    if(comparison){
+        const pane=el('figure',{class:'editor-pair-reference'},el('figcaption',{},comparison.label+' · unchanged comparison'),
+            el('img',{src:comparison.url,alt:comparison.label}));
+        if(onSwitch)pane.append(button('Edit '+comparison.label,()=>{if(!busy){dialog.close();onSwitch();}}));
+        const pair=el('div',{class:'editor-pair'},viewport,pane);
+        toolRow.parentElement.insertBefore(pair,show);
+        zoomTools.append(button('Toggle comparison',()=>{pane.hidden=!pane.hidden;pair.classList.toggle('single',pane.hidden);applyZoom();}));
+    }
+    container.append(dialog);
     const previousFocus = document.activeElement;
     dialog.addEventListener("cancel",event=>{if(busy){event.preventDefault();status.textContent="Use Stop generation before closing the editor.";}});
     dialog.addEventListener("close",()=>{clearInterval(timer);clearInterval(animation);resize.disconnect();dialog.remove();previousFocus?.focus?.({preventScroll:true});});
@@ -158,6 +172,8 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
         if(op.tool==="initial") selected.drawImage(initialMask,0,0);
         else if(op.tool==="rectangle") {
             const [a,b]=points;selected.fillRect(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1]));
+        } else if(op.tool==='ellipse') {
+            const [a,b]=points;selected.beginPath();selected.ellipse((a[0]+b[0])/2,(a[1]+b[1])/2,Math.abs(a[0]-b[0])/2,Math.abs(a[1]-b[1])/2,0,0,Math.PI*2);selected.fill();
         } else if(op.tool==="polygon") {
             selected.beginPath();points.forEach(([x,y],i)=>i?selected.lineTo(x,y):selected.moveTo(x,y));
             selected.closePath();selected.fill();
@@ -248,6 +264,7 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
         all.disabled=busy;
         const polygonLabel=polygon.length?"Finish polygon":"Polygon lasso";
         if(tools.polygon.textContent!==polygonLabel) labelButton(tools.polygon,polygonLabel,polygon.length?"finish":"polygon");
+        labelButton(tools.magnetic,tool==='magnetic'&&polygon.length?'Finish magnetic lasso':'Magnetic lasso',tool==='magnetic'&&polygon.length?'finish':'magnetic');
         generateButton.disabled=busy || !!polygon.length || !operations.length || (!foreground && !prompt.value.trim());
         retry.disabled=busy || !candidate;keep.disabled=busy || !candidate;cancel.disabled=busy;
         stopButton.hidden=!busy || (foreground&&!prepareMask);progressBar.hidden=!busy;prompt.disabled=width.disabled=feather.disabled=replaceDetail.disabled=busy;
@@ -267,20 +284,24 @@ export async function openImageEditor({element:el, sourceURL, title, model, gene
     canvas.addEventListener("pointerdown",event=>{
         if(busy || event.button!==0) return;
         event.preventDefault();canvas.focus();display="selection";
-        if(tool==="polygon"){
-            polygon.push(point(event));candidate=null;resultImage=null;resultDownload.replaceChildren();
+        if(tool==='polygon'||tool==='magnetic'){
+            const next=point(event);
+            anchors.push(polygon.length);
+            if(tool==='magnetic'&&polygon.length){magnet??=imageMagnet(source);polygon.push(...magnet(polygon.at(-1),next));}
+            else polygon.push(next);
+            candidate=null;resultImage=null;resultDownload.replaceChildren();
             status.textContent=polygon.length<3?"Click at least three points, then Finish polygon.":"Add more points or click Finish polygon.";
             paint();update();return;
         }
         canvas.setPointerCapture(event.pointerId);
         stroke={tool,width:Math.max(1,Math.min(512,Number(width.value)||40)),points:[point(event)]};
-        if(tool==="rectangle") stroke.points.push(point(event));
+        if(tool==='rectangle'||tool==='ellipse') stroke.points.push(point(event));
         rebuild();
     });
     canvas.addEventListener("pointermove",event=>{
         cursor=point(event);
         if(!stroke) {paint();return;}
-        if(stroke.tool==="rectangle") stroke.points[1]=point(event);
+        if(stroke.tool==='rectangle'||stroke.tool==='ellipse') stroke.points[1]=point(event);
         else if(stroke.points.length<10000) stroke.points.push(point(event));
         rebuild();
     });

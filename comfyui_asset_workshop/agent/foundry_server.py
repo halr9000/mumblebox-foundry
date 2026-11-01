@@ -26,6 +26,8 @@ def create_server(client):
         "Reuse request_id for retries of the same start; use a new ID for an intentional new operation. "
         "Poll status at sensible intervals; completed checkpoints survive cancellation. "
         "The backend continues if this client disconnects. show_run updates the existing Foundry UI without OS focus. "
+        "For initial images use foundry_image_capabilities, create, then start generate. Asset categories produce a front/back pair; general/background produce one image. "
+        "Review edits before accepting. Save accepted images; handoff copies a pair and its provenance into 3D inputs. Gallery removal is separate from explicit file deletion. "
         "Inspect previews and package metadata; do not claim animation/print suitability solely from file format."))
 
     @server.tool(structured_output=True)
@@ -84,6 +86,8 @@ def create_server(client):
         """Get completed package metadata and its local download URL, not a large binary response."""
         return client.package(run_id)
 
+    from image_tools import register as register_images
+    register_images(server,client,checked)
     return server
 
 def main():

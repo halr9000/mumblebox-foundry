@@ -96,7 +96,8 @@ def idle():
     if queue().get_tasks_remaining():
         raise ValueError("Another Comfy job is queued or running. Wait for it to finish.")
     from .foundry.workflows.image_to_3d.runs import busy as foundry_busy
-    if single_image_jobs_active() or foundry_busy():
+    from .foundry.workflows.image_creation.runs import busy as image_busy
+    if single_image_jobs_active() or foundry_busy() or image_busy():
         raise JobConflict("A Mumblebox job is still active. Wait for it to finish or stop it before changing the library or History.")
     if description_helper.STATE.get("running"):
         raise ValueError("The description assistant is working. Wait for it or stop it before generating an image.")
@@ -169,7 +170,7 @@ async def status(request):
         "vram_total": total, "vram_used": total - free,
         "loaded_models": len(memory.current_loaded_models),
         "helper_loaded": description_helper.PROCESS is not None and description_helper.PROCESS.poll() is None,
-        "running": queue().get_tasks_remaining() > 0 or __import__(__package__+".foundry.workflows.image_to_3d.runs",fromlist=["busy"]).busy(), "root": configuration()["root"],
+        "running": queue().get_tasks_remaining() > 0 or any(__import__(__package__+".foundry.workflows."+name+".runs",fromlist=["busy"]).busy() for name in ('image_to_3d','image_creation')), "root": configuration()["root"],
         "download": dict(models.DOWNLOAD), "profiles": PROFILES,
         "resource_download": DOWNLOADS.status(),
         "startup_vram_reserve_gb": memory.extra_reserved_memory() / 1024**3,

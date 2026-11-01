@@ -16,7 +16,7 @@ from .receipts import sync
 
 PREFIX = "/mumblebox-foundry/v1"
 
-def register(routes, library, preferences, wizard_factory=None, resources=None, updates=None):
+def register(routes, library, preferences, wizard_factory=None, resources=None, updates=None, image_factory=None, image_notify=None):
     def endpoint(function):
         async def wrapped(request):
             origin = request.headers.get("Origin")
@@ -33,6 +33,10 @@ def register(routes, library, preferences, wizard_factory=None, resources=None, 
             except Exception:
                 return web.json_response({"error": "The Foundry operation could not finish. Your workflow has not been changed."}, status=500)
         return wrapped
+
+    if image_factory:
+        from .workflows.image_creation.routes import register as image_routes
+        image_routes(routes,image_factory,endpoint,image_notify or (lambda ident:None))
 
     async def body(request):
         raw = await request.content.read(16385)
@@ -262,11 +266,24 @@ def install():
             from ..finishing.package_catalog import VARIANTS,parse_selection
             runs.ACTIVE=runs.WizardRuns(state/"wizard-runs",folder_paths.get_input_directory(),
                 folder_paths.get_output_directory(),NativeQueue(PromptServer.instance.prompt_queue),
-                resources,has_active_jobs,parse_selection,VARIANTS)
+                resources,lambda:has_active_jobs() or image_busy(),parse_selection,VARIANTS)
             runs.ACTIVE.library=library
+            from .workflows.image_creation.lineage import resolve_handoff
+            runs.ACTIVE.image_source_resolver=lambda source,refs:resolve_handoff(state/'image-creation',source,refs)
         return runs.ACTIVE
     from .workflows.image_to_3d.runs import busy
-    library.busy=lambda:PromptServer.instance.prompt_queue.get_tasks_remaining()>0 or busy()
+    from .workflows.image_creation.runs import busy as image_busy
+    def image_factory():
+        from .workflows.image_creation import runs
+        if runs.ACTIVE is None:
+            from .workflows.image_creation.library import ImageLibrary
+            from ..single_image_routes import NativeQueue,has_active_jobs
+            from ..routes import resources
+            runs.ACTIVE=runs.ImageRuns(ImageLibrary(state/'image-creation',folder_paths.get_output_directory()),
+                folder_paths.get_input_directory(),NativeQueue(PromptServer.instance.prompt_queue),
+                resources,lambda:has_active_jobs() or busy())
+        return runs.ACTIVE
+    library.busy=lambda:PromptServer.instance.prompt_queue.get_tasks_remaining()>0 or busy() or image_busy()
     from .resources import ResourceInventory
     from .. import models,description_helper
     import comfy.model_management as memory
@@ -280,4 +297,5 @@ def install():
     from .updates import ReleaseUpdates
     preferences = Preferences(state/"preferences.json")
     updates = ReleaseUpdates(state/"updates.json", preferences)
-    register(PromptServer.instance.routes, library, preferences, wizard_factory, resource_inventory, updates)
+    register(PromptServer.instance.routes, library, preferences, wizard_factory, resource_inventory, updates,
+             image_factory,lambda ident:PromptServer.instance.send_sync('mumblebox-foundry-image',{'id':ident}))

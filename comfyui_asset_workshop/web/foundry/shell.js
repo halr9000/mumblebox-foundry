@@ -14,7 +14,7 @@ export class FoundryShell {
     constructor(host,node) {
         this.node=node; this.host=host; this.tab="Choose a Workflow";
         this.shadow=host.attachShadow({mode:"open"});
-        for (const file of ["theme.css","layout.css"]) this.shadow.append(el("link",{rel:"stylesheet",href:new URL(file,import.meta.url).href}));
+        for (const file of ["theme.css","layout.css","images.css"]) this.shadow.append(el("link",{rel:"stylesheet",href:new URL(file,import.meta.url).href}));
         this.root=el("div",{class:"foundry","data-theme":matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"});
         this.shadow.append(this.root);
         // OrbitControls receives pointerup at the shadow root. Let releases
@@ -31,6 +31,12 @@ export class FoundryShell {
             if(typeof id==="string"&&/^[a-f0-9]{32}$/.test(id))this.openWizard({runId:id});
         };
         api.addEventListener("mumblebox-foundry-run",this.agentRunHandler);
+        this.agentImageHandler=event=>{
+            if(this.node.graph!==app.graph||!this.host.isConnected)return;
+            const id=event.detail?.id;
+            if(typeof id==='string'&&/^[a-f0-9]{32}$/.test(id)){this.openImageId=id;this.openImages('Create Images');}
+        };
+        api.addEventListener('mumblebox-foundry-image',this.agentImageHandler);
     }
     build() {
         this.version=el("small",{},"Interface loading");
@@ -147,5 +153,5 @@ export class FoundryShell {
         try{const module=await import("./views/settings.js");return module.render(this,options);}
         catch(error){this.message(error.message,true);}
     }
-    dispose() {this.updates.dispose();api.removeEventListener("mumblebox-foundry-run",this.agentRunHandler);this.stopPolling?.();this.viewDispose?.();this.activeDialog?.close();this.root.remove();this.sequence++;}
+    dispose() {this.updates.dispose();api.removeEventListener("mumblebox-foundry-run",this.agentRunHandler);api.removeEventListener('mumblebox-foundry-image',this.agentImageHandler);this.stopPolling?.();this.viewDispose?.();this.imageCreator?.dispose();this.activeDialog?.close();this.root.remove();this.sequence++;}
 }

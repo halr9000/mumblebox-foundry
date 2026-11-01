@@ -15,7 +15,7 @@ export function retainSession(recent, state) {
 // Older durable runs omit settings introduced in later interface versions.
 export function copyRunConfiguration(defaults,run) {
     const draft=structuredClone(defaults);
-    for(const field of ['name','references','category','turnaround_model','profile','overrides','selection']) {
+    for(const field of ['name','references','category','turnaround_model','profile','overrides','selection','image_creation']) {
         if(run[field]!==undefined)draft[field]=structuredClone(run[field]);
     }
     return draft;

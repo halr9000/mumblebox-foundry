@@ -1,3 +1,4 @@
+import {capturePhoto} from "../images/references.js";
 import {el,button,hint,field} from "../dom.js";
 import {dialog} from "../dialogs.js";
 import {request} from "../services.js";
@@ -32,35 +33,7 @@ async function upload(w,file){
         role:w.draft.references.length?"detail":"primary",description:""});
     w.remember();
 }
-function camera(w){
-    let stream,closed=false,capture=null;
-    const video=el("video",{autoplay:true,playsInline:true,muted:true,class:"webcam-preview"});
-    const preview=el("img",{class:"webcam-preview",alt:"Captured reference",hidden:true});
-    const status=hint("Starting camera…");
-    const stop=()=>stream?.getTracks().forEach(track=>track.stop());
-    const modal=dialog(w.shell,"Take a reference photo",el("div",{},video,preview,status),[
-        {label:"Close",run:close=>close()},
-        {label:"Retake",run:()=>{capture=null;preview.hidden=true;video.hidden=false;status.textContent="Frame the asset, then capture the photo.";}},
-        {label:"Capture",run:async()=>{
-            if(!video.videoWidth)return;
-            const canvas=document.createElement("canvas");canvas.width=video.videoWidth;canvas.height=video.videoHeight;
-            canvas.getContext("2d").drawImage(video,0,0);
-            capture=await new Promise(resolve=>canvas.toBlob(resolve,"image/png"));
-            if(preview.src.startsWith("blob:"))URL.revokeObjectURL(preview.src);
-            preview.src=URL.createObjectURL(capture);preview.hidden=false;video.hidden=true;
-            status.textContent="Review this photo. Use Photo keeps it as a reference; Retake replaces it.";
-        }},
-        {label:"Use Photo",primary:true,run:close=>{
-            if(!capture){status.textContent="Capture a photo first.";return;}
-            const file=new File([capture],"camera-"+Date.now()+".png",{type:"image/png"});
-            close();w.act(()=>upload(w,file));
-        }}]);
-    modal.surface.addEventListener("foundry-close",()=>{closed=true;stop();if(preview.src.startsWith("blob:"))URL.revokeObjectURL(preview.src);});
-    navigator.mediaDevices.getUserMedia({video:true,audio:false}).then(value=>{
-        stream=value;if(closed){stop();return;}
-        video.srcObject=stream;status.textContent="Frame a face, object or drawing. Camera audio is not requested.";
-    }).catch(error=>{status.textContent="Camera unavailable: "+error.message+". File upload is still available.";});
-}
+function camera(w){capturePhoto(w.shell,file=>w.act(()=>upload(w,file)));}
 export function inputPage(w){
     const name=el("input",{value:w.draft.name,maxLength:100,placeholder:"Name this asset","aria-label":"Asset name",
         oninput:e=>{w.draft.name=e.target.value;w.remember();}});
@@ -112,8 +85,8 @@ export function inputPage(w){
                 }):null)),el("div",{class:"reference-list"},...cards)),
         hint("Keep the whole subject in frame with a clear silhouette. A plain background is easiest to interpret. Reference order, purposes and descriptions are sent to the selected model. Review all four generated views before continuing."),
         el("div",{class:"image-invitation"},el("strong",{},"Don't have an image?"),
-            button("Create an image or scan an image with your webcam",()=>w.shell.openImages("Create Images")),
-            el("small",{class:"muted"},"Image creation workflows are coming soon.")),
+            button("Create an image or scan an image with your webcam",()=>{w.remember();w.shell.imageOrigin={sessionId:w.sessionId};w.shell.openImages("Create Images");}),
+            el("small",{class:"muted"},"Generate a front/back reference pair, then return here with your images.")),
         modelPanel,
         el("details",{},el("summary",{},"Advanced turnaround settings"),number(w,"turnaround_seed","Turnaround seed","Keep this fixed to compare settings. Regenerate views chooses a new seed."),
             hint("The selected model uses its own sampling defaults. The output remains a 4096 × 1024 sheet with four square panels."),

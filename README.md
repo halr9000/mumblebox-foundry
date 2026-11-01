@@ -2,11 +2,15 @@
 
 A local ComfyUI interface for turning reference images into textured 3D assets. A guided workflow connects four-view image generation, Pixal3D/TRELLIS.2 geometry, Hi3D refinement, measured cleanup, texturing and selected exports.
 
-**Preview 0.1.0-preview.4 — Windows / NVIDIA.** This is an early release with manual dependency setup, not a one-click installer. Start with [installation](INSTALL.md). Original Foundry code is Apache-2.0; models and third-party tools retain their own terms. Read [third-party notices](THIRD-PARTY.md), particularly before commercial use.
+**Preview 0.1.0-preview.5 — Windows / NVIDIA.** This is an early release with manual dependency setup, not a one-click installer. Start with [installation](INSTALL.md). Original Foundry code is Apache-2.0; models and third-party tools retain their own terms. Read [third-party notices](THIRD-PARTY.md), particularly before commercial use.
 
 ## Included
 
 - One working image-to-3D wizard, accepting an overall reference plus optional described references.
+- A separate image creator: front/back pairs for assets, or single background/general images. References, compatible installed LoRAs and model defaults are available on one scrolling page.
+- Side-by-side image editing with rectangle, ellipse, brush, erase, polygon and magnetic selections. Edits are previews until accepted; original revisions remain available.
+- Image Gallery with grouped pairs, filters, revision restore, download and confirmed removal. Deleting entries and deleting their files are separate choices.
+- Save an accepted pair and send it into the 3D wizard, retaining reference roles and generation provenance.
 - Supported Qwen, FLUX and Klein turnaround choices with model-specific settings and license information.
 - Four-view review, mesh/refinement controls, final mesh preview, export choices and a downloadable package.
 - Detailed and reduced triangle meshes, optional quad retopology, UVs and detail baking. Available formats: GLB, FBX, OBJ, BLEND, STL, PNG and ZIP.
@@ -16,7 +20,7 @@ A local ComfyUI interface for turning reference images into textured 3D assets. 
 - A Civitai browser for installing image models and LoRAs. These are initial-image resources; downloads do not expand the supported turnaround models.
 - A [local MCP server](docs/AGENT-SETUP.md) for agents using the same workflow services as the interface.
 
-Future workflow cards are labeled Coming soon. Standalone image creation, mesh repair, video reconstruction, turntable capture, action figures and Pinokio packaging are not shipped as completed workflows.
+Future workflow cards are labeled Coming soon. Mesh repair, video reconstruction, turntable capture, action figures and Pinokio packaging are not shipped as completed workflows.
 
 ## Workflow
 
@@ -29,7 +33,7 @@ The detailed master is retained. Optional quad retopology provides an editing st
 1. Install the dependencies and Foundry as described in [INSTALL.md](INSTALL.md).
 2. Start the local Hi3D service and ComfyUI.
 3. Open `comfyui_asset_workshop/workflows/Mumblebox 3D Asset Foundry.json`.
-4. Select **Open Wizard** and supply your own image.
+4. Select **Open Wizard** and supply your own image, or **Images → Create Images** to create starting references first.
 
 The public workflow contains no saved test images, meshes, textures, project history or credentials. Model weights are not included. They download from their upstream hosts when a selected stage first needs them; opening the interface does not download models. Access-gated models may require an account/token and acceptance of their upstream terms.
 

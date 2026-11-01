@@ -39,3 +39,20 @@ Repeat `--input-root` or use `--input-file` to authorize specific reference inpu
 Read capabilities first; do not invent identifiers or format combinations. Label the overall reference primary and describe extra images' purposes. Use a unique request_id for an intentional start; reuse the same request_id and payload when retrying an uncertain request. Poll at sensible intervals. A disconnected MCP client does not cancel a backend job.
 
 Model licenses vary. A successful file export is not proof of animation suitability or physical printability. Inspection tools such as Blender remain useful for reviewing the actual result.
+
+## Image creation and Gallery
+
+The image tools use a separate workflow in the same open graph. They share the interface's job runner, revisions and resource management.
+
+- `foundry_image_capabilities`: supported image models, categories, reference limits, defaults and license information.
+- `foundry_image_create` / `foundry_image_update`: configure a creation with `name`, `category`, `model`, `description`, optional `front`, `back`, `references`, `settings`, `checkpoint` and `loras`.
+- `foundry_image_start`: `generate` resumes unchanged completed stages; `regenerate` intentionally makes a new variation; `edit` runs a prepared selection. Use a unique request identity for each intentional operation.
+- `foundry_image_status` / `foundry_image_cancel` / `foundry_image_show`: inspect, cancel or display the creation in the existing interface.
+- `foundry_image_prepare_edit`: supply an authorized PNG mask (white selects, black preserves), source revision, side and description. The tool does not generate until `start` is called.
+- `foundry_image_accept`: explicitly accept a reviewed candidate or restore a retained revision. Supply the expected current revision to prevent stale overwrites.
+- `foundry_image_save`: add the accepted set to Gallery and obtain its image ZIP URL.
+- `foundry_image_handoff`: copy accepted front/back images to 3D inputs. Merge the returned name, category, references and `image_creation` receipt into a new 3D configuration. The receipt preserves verified image-model provenance in its eventual export record.
+- `foundry_image_gallery`: bounded search, category, single/pair filter and pagination.
+- `foundry_image_removal_preview` / `foundry_image_remove`: review exact selected creations and apply a confirmation token only for the scope authorized by the user. Entry removal keeps files by default. Deleting files requires separate explicit authorization.
+
+Asset categories generate the front first and use it as the rear reference. Background and General Image produce one standalone image and do not expose a 3D handoff. Accepting a local edit preserves pixels outside its mask and the other view; visually review consistency before continuing. The image ZIP includes accepted PNGs, a root README and sanitized generation metadata, without source uploads, private prompts or local paths.

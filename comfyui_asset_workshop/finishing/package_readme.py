@@ -58,6 +58,22 @@ def render_readme(catalog):
         else:lines+=["- Included documents: "+str(len(fs))+".","- Retained source texts are not rewritten by the catalog."]
         lines+=[""]
     lines+=["## Production record",""]
+    creation=c.production.get('image_creation')
+    if creation:
+        lines += ['### Originating reference images','','Accepted images created in Foundry and used as references for this asset.','',
+                  '| View | Image model | Seed | Recorded license |','|---|---|---|---|']
+        for image in creation.get('images',[]):
+            p=image['provenance'];terms=p.get('model_license',{})
+            lines += ['| '+text(image['side'])+' | '+text(p.get('profile','Not recorded'))+' | '+fmt(p.get('seed'))+' | '+text(terms.get('label','Not recorded'))+' |']
+        lines += ['']
+        for image in creation.get('images',[]):
+            p=image['provenance'];terms=p.get('model_license',{})
+            if terms.get('url'):lines += ['',text(image['side'].title())+' model source and terms: '+text(terms['url']),'']
+            checkpoint=p.get('checkpoint',{})
+            if checkpoint:lines += ['- Image checkpoint: '+text(checkpoint.get('model_name','External checkpoint'))+'. Source: '+text(checkpoint.get('source_url','Not recorded'))]
+            for lora in p.get('loras',[]):
+                lines += ['- Image LoRA: '+text(lora.get('name','Not recorded'))+'. Source and terms: '+text(lora.get('civitai',{}).get('source_url','Not recorded; consult its provider.'))]
+        lines += ['', 'Image-model terms are separate from the downstream geometry and texturing resources below. The structured record binds each originating image to its accepted revision and checksum.','']
     turnaround=c.production.get("turnaround",{})
     if turnaround:
         lines += ["### Turnaround settings", "", "| Setting | Recorded value |", "|---|---|"]

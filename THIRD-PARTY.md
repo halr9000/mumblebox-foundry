@@ -9,6 +9,8 @@ The resource inventory and retained notices are in:
 
 Generated asset packages include the resources recorded for the stages actually used, their source/license links and relevant notices. Model choice can change those terms. The application's Apache license is not a statement that every selectable model permits commercial use.
 
+Image ZIPs record the selected image model, checkpoint and LoRAs for each accepted image. Sending a pair to the 3D wizard carries those records into the mesh package's production record. An external resource with missing license metadata is identified by its source when available; Foundry does not infer permission from an absent record. Original uploads, private prompts and model weights are not included in the image ZIP.
+
 Key dependencies include ComfyUI (GPL-3.0), Blender (GPL-3.0), Pixal3D (MIT), TRELLIS.2 (MIT), QuadriFlow (MIT), PyMeshLab (GPL-3.0), MeshLib (its own terms), DINOv3 (its own model terms), and Hi3D (Hi3D Open License 1). Qwen Image 2.1 uses the retained Qwen Research License; this application does not grant commercial authorization. Other Qwen/FLUX/Klein choices have their own displayed licenses.
 
 The Hi3D client bridge is adapted from the T8 workbench. Its MIT notice is retained in `comfyui_asset_workshop/licenses/Hi3D-Workbench-MIT.txt`. Downloaded worker software remains upstream software with its own notices. The public package does not redistribute model weights.

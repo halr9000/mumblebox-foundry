@@ -8,6 +8,7 @@ import uuid
 from PIL import Image, ImageChops, ImageFilter, PngImagePlugin
 
 from .store import LOCK, atomic_json, digest, identifier, reset_angles
+from .image_masks import prepare_mask, composite_image
 
 
 def create(library, asset_id, slot, revision_id, prompt, mask_bytes, feather=0, replace_detail=False):
@@ -26,15 +27,8 @@ def create(library, asset_id, slot, revision_id, prompt, mask_bytes, feather=0, 
     source_path = library.path(asset_id, source["file"])
     if digest(source_path) != source["sha256"]:
         raise ValueError("The source image changed on disk. Import it again before editing.")
-    with Image.open(source_path) as original, Image.open(io.BytesIO(mask_bytes)) as uploaded:
-        if uploaded.size != original.size or uploaded.width * uploaded.height > 40_000_000:
-            raise ValueError("The selection must match the image dimensions and be below 40 megapixels.")
-        mask = uploaded.convert("L")
-    if not mask.getbbox():
-        raise ValueError("Select the area you want to change first.")
-    if feather:
-        # Fade inward only; never expand the area the user allowed us to change.
-        mask = ImageChops.multiply(mask, mask.filter(ImageFilter.GaussianBlur(feather)))
+    with Image.open(source_path) as original:
+        mask = prepare_mask(original.size, mask_bytes, feather)
     edit_id = uuid.uuid4().hex[:16]
     relative = f"edits/{edit_id}/mask.png"
     path = library.path(asset_id, relative)
@@ -65,8 +59,7 @@ def composite(library, asset_id, generated, edit):
         original = image.convert("RGBA")
     with Image.open(library.path(asset_id, edit["mask"]["file"])) as image:
         mask = image.convert("L")
-    generated = generated.convert("RGBA").resize(original.size, Image.Resampling.LANCZOS)
-    return Image.composite(generated, original, mask)
+    return composite_image(original, generated, mask)
 
 
 def save_candidate(library, asset_id, slot, job_id, generated, details):

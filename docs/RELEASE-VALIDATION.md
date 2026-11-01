@@ -1,4 +1,47 @@
-# Preview 0.1.0-preview.4 validation
+# Preview 0.1.0-preview.5 validation
+
+Validated on 2026-11-01. This release adds the independent image creator, paired editing, Image Gallery and image-to-3D handoff. The existing four-view mesh, refinement, cleanup and export stages retain their owners and settings. Test images and private runtime records are not distributed.
+
+## Real generation and installed controls
+
+Checks operated the actual Foundry interface in the existing Alt-Tab-accessible Comfy Desktop window through its supported integration, without moving or focusing the operating-system window.
+
+| Path | Observed result |
+|---|---|
+| Front/back creation | FLUX.2 Klein 4B generated a clockwork courier front and an image-conditioned back at 512 pixels, four steps, CFG 1, seeds 42/43. Both previews loaded. |
+| Selected-area edit | A vest color edit completed through the installed editor. Comparison against the actual source-resolution selection found 19,500 changed pixels inside and **zero outside**. Accepting the edit retained the original and left the rear revision unchanged. |
+| Single image and LoRA | General Image generated a 512-pixel paper observatory using the installed Paper Diorama Klein 4B LoRA. The result and resource hash/source appeared in its record. General Image offered no 3D handoff. |
+| Gallery | Saving produced one grouped pair entry and one single-image entry with loaded thumbnails. Saved files and entry removal have separate confirmation controls. |
+| 3D handoff | Save & Create a 3D Mesh opened page 1 with accepted front/back copies, roles, descriptions and a server-validated provenance receipt. No additional mesh generation was required. |
+| Reload recovery | A restored Comfy property proxy initially broke creator initialization. The installed repair restored the saved draft and both previews after reload. |
+| Separate graph | The creator materialized its own colored node group on the same graph. The existing 94-node 3D workflow and its completed alien output records were preserved. |
+
+These are representative checks, not qualification of every model, LoRA or category. The accepted edit can make the two views inconsistent; the UI asks users to review both. Physical webcam capture remains deferred because no camera is connected.
+
+## Automated and protocol checks
+
+- Foundry Python suite: **83 passed**, including 20 image-creation tests. Coverage includes input contracts, pair preservation/recovery, revisions, selection compositing, package privacy, bounded Gallery queries, deletion ownership and handoff validation, alongside the existing 3D contracts.
+- Portable installer: **5 passed**. Reinstallation preserves settings/models, backs up changed files and rejects unsafe runtime configuration before writes.
+- Existing JavaScript wizard-session regression passed. Changed image UI modules passed syntax checks.
+- Real MCP stdio against installed services discovered **23 tools**. Image capabilities, create/update/status, idle cancellation, save, Gallery, handoff and invalid operation rejection passed. Existing 3D status/package/create/update/cancel operations also passed. This protocol check did not start a GPU run.
+
+## Output documentation
+
+The actual accepted pair ZIP contained `Images/front.png`, `Images/back.png`, `README.md` and `Metadata/creation.json`. The single-image ZIP contained `Images/single.png` and the same two documentation files. ZIP integrity and member checksums passed. README dimensions, roles, model terms and the single image's LoRA source matched the records. Embedded private recipe metadata was excluded.
+
+The mesh README renderer was exercised with originating-image provenance and produced its model/license section. The handoff's copied input hashes and provenance were verified independently. This is not a claim that a fresh complete image-to-mesh generation/export was run during preview.5; the existing mesh run and export contract tests were retained.
+
+## Release boundary
+
+The explicit archive inventory includes the new image backend, editor/Gallery assets, MCP adapter and documentation. It excludes generated assets, model weights, credentials, local runtime records and obsolete logo drafts. The public workflow has empty user inputs and no saved outputs. The independent image graph is populated when image creation runs.
+
+The release uses the existing portable installer and dependency setup. Relocation/package checks are not a fresh-machine installation test. Windows/NVIDIA is the tested platform: RTX 4080 SUPER, 16 GB VRAM and 64 GB system RAM. Additional memory profiles do not establish 8 GB compatibility.
+
+Optional quads do not imply automatic rigging or animation-ready deformation. Strand Groom/Alembic, deferred workflow cards and Pinokio packaging remain future work. Third-party licenses remain separate from Foundry's Apache-2.0 license. GitHub records the release commit and attached archive digest; the archive also contains per-file `SHA256SUMS.json`.
+
+---
+
+# Retained preview.4 evidence
 
 Validated on 2026-11-01. Preview.4 corrects an archive inventory omission of the retained Materials Lab HTML entry point; the main wizard and mesh pipeline are unchanged. A regression check now requires that entry point in the archive. Public preview.3 was downloaded without authentication, its digest matched, and the installed update control successfully read its GitHub release. Evidence below separates installed control actions, automated tests and exported-asset checks. Generated test assets and local diagnostic receipts are not distributed.
 

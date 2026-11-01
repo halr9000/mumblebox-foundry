@@ -1,5 +1,6 @@
 import {el,button,hint,icon} from "../dom.js";
-import {render as gallery} from "./library.js";
+import {gallery} from '../images/gallery.js';
+import {ImageCreator} from '../images/controller.js';
 
 export async function render(shell){
     let disposed=false,childDispose,sequence=0;
@@ -11,17 +12,25 @@ export async function render(shell){
         [...tabs.children].forEach(b=>{const selected=b.textContent===name;b.setAttribute("aria-selected",String(selected));b.tabIndex=selected?0:-1;});
         body.setAttribute("aria-label",name);
         if(name==="Create Images"){
-            body.replaceChildren(el("section",{class:"image-creation-placeholder"},icon("image",54),
-                el("span",{class:"badge"},"Coming soon"),el("h3",{},"A starting image for your next asset"),
-                el("p",{},"This space will bring together image creation workflows and capture from a connected camera. Finished images will be available in Gallery."),
-                hint("Image creation is not connected yet. The image-to-3D wizard already accepts uploaded reference images and photos from a connected camera."),
-                button("Choose a workflow",()=>shell.open("Choose a Workflow"))));
+            let creator=shell.imageCreator;
+            if(creator?.disposed)creator=null;
+            if(creator&&shell.openImageId&&shell.openImageId!==creator.id){
+                if(creator.run?.active){body.replaceChildren(hint('An image is generating. Return to Create Images when it finishes.'));return;}
+                creator.dispose();creator=null;
+            }
+            if(creator)delete shell.openImageId;
+            try{
+                if(!creator){creator=new ImageCreator(shell);shell.imageCreator=creator;await creator.init();}
+                if(disposed||current!==sequence){creator.detach();return;}
+                body.replaceChildren(creator.attach());childDispose=()=>creator.detach();
+            }catch(error){creator?.dispose();body.replaceChildren(el('p',{role:'alert'},error.message));}
             return;
         }
         body.replaceChildren(hint("Loading gallery…"));
-        const view=await gallery(shell,"image");
+        const view=await gallery(shell);
         if(disposed||current!==sequence){view.dispose?.();return;}
         body.replaceChildren(view.element||view);childDispose=view.dispose;
+        requestAnimationFrame(()=>{if(!disposed&&current===sequence)shell.content.scrollTop=shell.imageGalleryScroll||0;});
     }
     for(const name of ["Create Images","Gallery"])tabs.append(button(name,()=>open(name),{role:"tab"}));
     tabs.addEventListener("keydown",e=>{
