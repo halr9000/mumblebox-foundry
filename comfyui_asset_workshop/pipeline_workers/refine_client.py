@@ -79,11 +79,14 @@ def mesh_value(v,f):
 
 class Hi3DBackend:
     @classmethod
-    def INPUT_TYPES(cls):return {'required':{'url':('STRING',{'default':'http://127.0.0.1:8378'})}}
+    def INPUT_TYPES(cls):return {'required':{'url':('STRING',{'default':'','tooltip':'Leave empty to use the configured local Hi3D service.'})}}
     RETURN_TYPES=('HI3D_BACKEND',)
     FUNCTION='connect'
     CATEGORY='Hi3D'
     def connect(self,url):
+        if not url.strip():
+            from ..finishing.runtime import settings
+            url=settings().get('hi3d_url','http://127.0.0.1:8378')
         from ..foundry.workflows.image_to_3d.worker_models import ensure_hi3d
         import comfy.model_management as mm
         def cancelled():

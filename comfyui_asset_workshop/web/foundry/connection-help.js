@@ -1,6 +1,21 @@
 import {el,button,hint,link} from "./dom.js";
 import {dialog} from "./dialogs.js";
 
+// Parse only a Hugging Face repository identifier, never arbitrary HTML or URLs.
+// Legacy saved errors contain the same identifier but no clickable access URL.
+export function modelAccessUrl(message) {
+    const match=String(message).match(/Hugging Face denied access to ([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\//);
+    return match?`https://huggingface.co/${encodeURIComponent(match[1])}/${encodeURIComponent(match[2])}`:null;
+}
+
+export function modelAccessError(shell,message) {
+    const panel=el("div",{class:"error-panel",role:"alert"},el("p",{},message));
+    const url=modelAccessUrl(message);
+    if(url)panel.append(el("div",{class:"actions"},link("Open model access page",url),
+        button("Open Hugging Face settings",()=>shell.settings({service:"hugging-face"}))));
+    return panel;
+}
+
 // One instruction source serves the resource browser and the token settings.
 export function civitaiInstructions() {
     return el("div",{class:"connection-help"},el("ol",{},

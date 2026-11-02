@@ -1,4 +1,34 @@
-# Preview 0.1.0-preview.5 validation
+# Preview 0.1.0-preview.6 validation
+
+Validated on 2026-11-02 on Windows/NVIDIA. This release adds the Pinokio installer and embedded Foundry interface, and repairs first-use model preparation and isolated texture-worker dependencies. The checks below distinguish actual generation from automated contract checks.
+
+## Model acquisition and installation
+
+- Downloaded all three required DINOv3 files without authentication from the public distribution already used by the pinned upstream TRELLIS wrapper. Their SHA-256 hashes matched the existing model manifest, including the 1,212,559,808-byte weights. The model and its license are unchanged; this acquisition path does not require the original repository's approval queue.
+- The complete selected-workflow resource set is prepared before generation, including downstream texture resources and back-view resources for image pairs. Print-only selection does not acquire unnecessary texture models. Files are prepared on disk; model loading/offloading remains stage-specific.
+- The installed texture-worker entry-point probe passed in both the native ComfyUI configuration and Pinokio's isolated worker environment. Its ComfyUI utility imports are now declared worker dependencies instead of relying on the host environment.
+- Focused automated checks passed: seven workflow/Rocket checks, ten readiness checks, seven bootstrap checks, six release/installer checks and two quad-diagonal checks. Release packaging rejects invalid UTF-8 and known corrupted-punctuation sequences.
+
+## Saved asset and geometry
+
+The Pinokio Ranger test used saved checkpoints to resume the failed workflow rather than regenerate successful stages. Turnaround, initial mesh, Hi3D, cleanup, texture, compact export preparation and optional quad preparation completed in the managed installation.
+
+- Hi3D used CUDA: recorded allocated/reserved GPU memory was 8,565/9,232 MB. The texture worker recorded 3.503/3.691 GB allocated/reserved.
+- The cleaned master had 359,200 vertices and 718,356 triangles. It had zero boundary edges, non-manifold edges and degenerate faces, with consistent winding and a watertight result.
+- Texturing retained 718,356 triangles; UV seams increased the vertex count to 422,768. The measured maximum positional difference was approximately 1.64e-8.
+- The compact version reached 100,000 triangles and passed the same boundary, non-manifold, degenerate-face, winding and watertight checks.
+- The optional authoring version contained 24,399 quads and eight small triangular caps, with no n-gons. Its triangulated export had 48,806 triangles and was watertight. All 17 disconnected components were retained. A deterministic 10,000-point comparison measured mean/p95 surface deviation of 0.000156/0.000538 of the source bounding-box diagonal; this does not establish animation-ready edge flow.
+- Quad corrections preserve the detailed master. They resolve triangulation conflicts and bounded small boundary loops; they do not merge all components or globally weld the source. Temporary NumPy mesh archives are closed before Windows scratch cleanup.
+
+The final package review is recorded when the interrupted packaging stage has resumed. These measurements describe this asset, not a guarantee for arbitrary generated subjects. Category generation and physical webcam checks remain user testing.
+
+## Release boundary
+
+The portable package includes the launcher, app entry point, dependency manifest and update/repair paths. Model weights, generated test assets, credentials and private runtime records are excluded. Models download on workflow first use, not when installing or opening Foundry. A Windows/NVIDIA managed-install run is not a claim of Linux/macOS or 8 GB compatibility.
+
+---
+
+# Retained preview.5 evidence
 
 Validated on 2026-11-01. This release adds the independent image creator, paired editing, Image Gallery and image-to-3D handoff. The existing four-view mesh, refinement, cleanup and export stages retain their owners and settings. Test images and private runtime records are not distributed.
 

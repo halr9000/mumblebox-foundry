@@ -27,7 +27,7 @@ export function renderMeshPipeline(c,content,el){
  const toggle=(label,key)=>c.select(label,{yes:'Enabled',no:'Disabled'},s[key]?'yes':'no',v=>change(key,v==='yes'));
  content.append(el('div',{class:'step-heading'},el('h3',{},'Build, texture and export'),c.hint('Generate clean geometry, add color and materials, then export your chosen result. Saved versions stay available.')));
  const refinements=c.disclosure('Refinement & cleanup settings',c.hint('Recommended settings are loaded. Changes apply to the next run; saved geometry is retained.'),
-  c.select('Initial mesh resolution',{1024:'1024 — recommended',1536:'1536 — more memory',2048:'2048 — experimental memory use'},s.shape_resolution,v=>change('shape_resolution',Number(v))),
+  c.select('Initial mesh resolution',{1024:'1024 â€” recommended',1536:'1536 â€” more memory',2048:'2048 â€” experimental memory use'},s.shape_resolution,v=>change('shape_resolution',Number(v))),
   c.grid(2,toggle('Hi3D refinement','refine_enabled'),c.select('Hi3D resolution',{512:'512',1024:'1024',1536:'1536 â€” recommended'},s.refine_resolution,v=>change('refine_resolution',Number(v)))),
   c.grid(2,number('Refinement steps','refine_steps',1,100),number('Refinement seed','refine_seed',0,2147483647)),
   c.grid(2,toggle('Weld duplicate vertices','weld_enabled'),number('Weld tolerance (relative)','weld_epsilon',0,.001,.00001)),
@@ -35,7 +35,7 @@ export function renderMeshPipeline(c,content,el){
   c.grid(2,toggle('Solid remesh','remesh_enabled'),number('Remesh resolution','remesh_resolution',128,1024)));
  content.append(c.panel('Build your asset','Pixal3D creates the shape. Hi3D refines it, then cleanup prepares the final surface. Four additional pictures communicate design intent and do not enter reconstruction.',
   el('div',{class:'action-bar'},c.button('Generate mesh & reference images',()=>c.start('build_geometry'),c.imageBlocked()||(!approved?'Approve one image in Prepare for 3D first.':''),'primary')),refinements));
- content.append(el('p',{class:'hint'},el('a',{href:'http://hi3d.ai/',target:'_blank',rel:'noopener noreferrer'},'Powered by Hi3D 1.0'),' · Pixal3D shape generation · TRELLIS.2 final-mesh texturing · StableMaterials optional material refinement.'));
+ content.append(el('p',{class:'hint'},el('a',{href:'http://hi3d.ai/',target:'_blank',rel:'noopener noreferrer'},'Powered by Hi3D 1.0'),' Â· Pixal3D shape generation Â· TRELLIS.2 final-mesh texturing Â· StableMaterials optional material refinement.'));
  const geometries=p.artifacts.filter(a=>a.kind==='geometry'&&!a.stale);
  if(geometries.length)content.append(c.select('Saved geometry checkpoint',Object.fromEntries(geometries.map(a=>[a.id,`${a.geometry_stage} Â· ${a.triangles?.toLocaleString()} triangles`])),chosen.geometry?.id,async id=>{c.project=await request(c.path('/pipeline/select'),{expected_revision:p.revision,artifact_id:id});}));
  const providers=caps.providers??{trellis2:{label:'TRELLIS.2 (recommended)',available:false,reason:'Reconnect to read runtime availability.'},pixal3d:{label:'Pixal3D texture only',available:false,reason:'Qualification pending.'}};

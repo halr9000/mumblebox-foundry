@@ -1,11 +1,15 @@
 const PREFIX = "/mumblebox-foundry/v1";
 export async function request(path, data, options = {}) {
-    const response = await fetch(path.startsWith("/") ? path : PREFIX + "/" + path, {
+    let response;
+    try { response = await fetch(path.startsWith("/") ? path : PREFIX + "/" + path, {
         method: data === undefined ? "GET" : "POST",
         ...options,
         headers: {"Content-Type":"application/json", ...(options.headers || {})},
         ...(data === undefined ? {} : {body:JSON.stringify(data)}),
-    });
+    }); } catch (cause) {
+        const error=new Error("Foundry has lost its connection to the local service. Restart Foundry in Pinokio if it has stopped; this page reconnects automatically.",{cause});
+        error.code="FOUNDRY_OFFLINE";throw error;
+    }
     let result;
     try { result = await response.json(); }
     catch { throw Error("The Foundry service is unavailable. Check that the installed extension is loaded."); }

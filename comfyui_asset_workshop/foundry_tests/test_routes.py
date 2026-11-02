@@ -27,6 +27,20 @@ class RouteTests(unittest.IsolatedAsyncioTestCase):
         await self.client.close()
         self.temp.cleanup()
 
+    async def test_app_entry_serves_gui_loader_and_fixed_packaged_graph(self):
+        response = await self.client.get("/mumblebox-foundry/")
+        self.assertEqual(response.status, 200)
+        self.assertIn("text/html", response.content_type)
+        html = await response.text()
+        self.assertIn("foundry-app=1", html)
+        self.assertIn("Loading Mumblebox", html)
+        response = await self.client.get("/mumblebox-foundry/v1/workflow")
+        self.assertEqual(response.status, 200)
+        graph = await response.json()
+        marker = graph["extra"]["mumblebox_foundry"]
+        interface = next(n for n in graph["nodes"] if str(n["id"]) == str(marker["interface_node_id"]))
+        self.assertEqual(interface["type"], "MumbleboxFoundry/Interface")
+        self.assertEqual(list(self.outputs.iterdir()), [])
     async def test_cross_origin_mutation_is_rejected(self):
         response = await self.client.patch("/mumblebox-foundry/v1/preferences", json={"theme":"dark"},
                                            headers={"Origin":"https://unrelated.example"})

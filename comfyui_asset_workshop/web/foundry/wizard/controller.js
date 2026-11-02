@@ -2,6 +2,7 @@ import {api} from "/scripts/api.js";
 import {el,button,hint} from "../dom.js";
 import {request} from "../services.js";
 import {dialog} from "../dialogs.js";
+import {modelAccessError} from "../connection-help.js";
 import {referenceFilename,syncWizardGraph,syncWizardOutputs,wizardStateKey,clearWizardState,savedWizardState,rememberPreviousSession} from "../graph-adapter.js";
 import {initialState,copyRunConfiguration} from "./session.js";
 import {exportChoices,validateExports} from "./export-choices.js";
@@ -175,7 +176,7 @@ export class Wizard {
             el("h2",{tabindex:-1},titles[this.page-1])));
         const pages=[inputPage,reviewPage,optionsPage,finishingPage,resultPage];
         const panel=el("div",{class:"wizard-panel"},header,
-            this.error?el("div",{class:"error-panel",role:"alert"},this.error):null,this.busy(),pages[this.page-1](this));
+            this.error?modelAccessError(this.shell,this.error):null,this.busy(),pages[this.page-1](this));
         this.host.replaceChildren(rail,panel);
         // Native DOM append does not accept null. Filtered via the shared helper.
         this.host.querySelector("h2")?.scrollIntoView({block:"nearest"});

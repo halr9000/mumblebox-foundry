@@ -57,6 +57,10 @@ def ensure_models(record,seed,references,cancelled,progress):
     asset=recipe_asset(record['config'],seed,references)
     memory.preflight(asset,'image')
     keys=recipes.required_models(asset,'image',action='reference_view' if references else 'create_image')
+    if record['config']['paired']:
+        # The back image conditions on the generated front. Prepare its adapter
+        # before generating that front, even when no upload was supplied.
+        keys = list(dict.fromkeys([*keys, *recipes.required_models(asset,'image',action='reference_view')]))
     for key in keys:
         if cancelled():raise InterruptedError('Image generation cancelled before model loading.')
         if models.installed(key) is None:

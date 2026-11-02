@@ -2,7 +2,7 @@
 
 A local ComfyUI interface for turning reference images into textured 3D assets. A guided workflow connects four-view image generation, Pixal3D/TRELLIS.2 geometry, Hi3D refinement, measured cleanup, texturing and selected exports.
 
-**Preview 0.1.0-preview.5 — Windows / NVIDIA.** This is an early release with manual dependency setup, not a one-click installer. Start with [installation](INSTALL.md). Original Foundry code is Apache-2.0; models and third-party tools retain their own terms. Read [third-party notices](THIRD-PARTY.md), particularly before commercial use.
+**Preview 0.1.0-preview.6 — Windows / NVIDIA beta.** Install through [Pinokio](docs/PINOKIO.md) for automated software setup, or use the [manual installation](INSTALL.md). Pinokio opens the Foundry interface directly. Original Foundry code is Apache-2.0; models and third-party tools retain their own terms. Read [third-party notices](THIRD-PARTY.md), particularly before commercial use.
 
 ## Included
 
@@ -20,7 +20,7 @@ A local ComfyUI interface for turning reference images into textured 3D assets. 
 - A Civitai browser for installing image models and LoRAs. These are initial-image resources; downloads do not expand the supported turnaround models.
 - A [local MCP server](docs/AGENT-SETUP.md) for agents using the same workflow services as the interface.
 
-Future workflow cards are labeled Coming soon. Mesh repair, video reconstruction, turntable capture, action figures and Pinokio packaging are not shipped as completed workflows.
+Future workflow cards are labeled Coming soon. Standalone mesh repair, video reconstruction, turntable capture and action figures are not shipped as completed workflows.
 
 ## Workflow
 
@@ -30,10 +30,11 @@ The detailed master is retained. Optional quad retopology provides an editing st
 
 ## Get started
 
-1. Install the dependencies and Foundry as described in [INSTALL.md](INSTALL.md).
-2. Start the local Hi3D service and ComfyUI.
-3. Open `comfyui_asset_workshop/workflows/Mumblebox 3D Asset Foundry.json`.
-4. Select **Open Wizard** and supply your own image, or **Images → Create Images** to create starting references first.
+1. In Pinokio, install this repository: https://github.com/mumblebox-gpt/mumblebox-foundry
+2. Choose **Install**, then **Start Foundry**. **Open Foundry** shows the interface inside Pinokio.
+3. Select **Open Wizard** and supply your own image, or **Images → Create Images** to create starting references first.
+
+The [Pinokio guide](docs/PINOKIO.md) covers installation, updates, repair and MCP setup. Existing ComfyUI users can follow [INSTALL.md](INSTALL.md) and open the packaged `Mumblebox 3D Asset Foundry.json` workflow instead.
 
 The public workflow contains no saved test images, meshes, textures, project history or credentials. Model weights are not included. They download from their upstream hosts when a selected stage first needs them; opening the interface does not download models. Access-gated models may require an account/token and acceptance of their upstream terms.
 
@@ -49,6 +50,6 @@ See [dependencies.json](dependencies.json) for pinned reference versions and [re
 - [Issues](https://github.com/mumblebox-gpt/mumblebox-foundry/issues)
 - [Mumblebox projects](https://github.com/mumblebox-gpt?tab=repositories)
 
-Settings offers **Check for updates** and an automatic startup check. Updates link to GitHub release notes and downloads; they do not silently install or replace your work.
+Settings offers **Check for updates** and an automatic startup check. In Pinokio, stop Foundry and choose **Update** to install an eligible published release. Updates are deliberate and preserve saved assets, settings and model weights; a GitHub push does not silently change your installation.
 
 Powered by Hi3D 1.0 - http://hi3d.ai/ . Thanks to the researchers and developers behind ComfyUI, Pixal3D, TRELLIS.2, Hi3D, the image models, Blender and the mesh-processing tools.

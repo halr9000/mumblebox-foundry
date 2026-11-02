@@ -69,3 +69,7 @@ comfyui_asset_workshop/docs/research/**/sources/
 # OS files
 Thumbs.db
 .DS_Store
+
+# Pinokio-owned software and persistent user data
+.pinokio/
+logs/

@@ -167,7 +167,7 @@ export function finishingPage(w){
 export function resultPage(w){
     const complete=!w.run?.active&&w.run?.status==="complete"&&w.run?.package;
     if(!complete)return el("div",{},hint("Textures, selected mesh versions and exports are being prepared from the saved clean master."),
-        !w.run?.active?button("Retry finishing",()=>w.act(()=>w.start("finish")),{class:"primary"}):null,
+        !w.run?.active?button("Retry remaining stages",()=>w.act(()=>w.start(w.run?.operation==="rocket"?"rocket":"finish")),{class:"primary"}):null,
         el("details",{},el("summary",{},"Stage log"),el("ol",{},...(w.run?.events||[]).map(e=>el("li",{},e.text)))),
         w.nav({back:4}));
     const p=w.run.package;

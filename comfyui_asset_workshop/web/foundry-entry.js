@@ -1,4 +1,5 @@
 import {app} from "/scripts/app.js";
+import {appMode,presentation,launchMessage} from "./foundry/app-mode.js";
 import {FoundryShell} from "./foundry/shell.js";
 import {NODE_TYPE,installReturnControl,showInterface} from "./foundry/graph-adapter.js";
 
@@ -16,15 +17,35 @@ function registerNode() {
             this.shell=new FoundryShell(host,this);
             this.size=[1280,960];this.color="#3d7257";this.bgcolor="#1f2d26";
             const originalRemoved=this.onRemoved;
-            this.onRemoved=()=>{this.shell.dispose();this.removeReturn?.();originalRemoved?.call(this);};
+            this.onRemoved=()=>{presentation?.release(this);this.shell.dispose();this.removeReturn?.();originalRemoved?.call(this);};
         }
     }
     LiteGraph.registerNodeType(NODE_TYPE,InterfaceNode);
+}
+let launching=false;
+async function openApplication(){
+    if(!appMode||launching)return;
+    launching=true;
+    try{
+        let node=app.graph._nodes.find(n=>n.type===NODE_TYPE);
+        if(!node){
+            const response=await fetch("/mumblebox-foundry/v1/workflow");
+            if(!response.ok)throw Error("The packaged Foundry workflow could not be loaded. Run Repair in the launcher.");
+            const graph=await response.json();
+            const result=await app.loadGraphData(graph,true,true,"Mumblebox 3D Asset Foundry",{skipAssetScans:true});
+            if(result===false)throw Error("The Foundry workflow could not open. Check the launcher logs and run Repair.");
+            node=app.graph._nodes.find(n=>n.type===NODE_TYPE);
+        }
+        if(!node)throw Error("The Foundry interface is missing. Run Repair in the launcher.");
+        await Promise.all([...node.shell.shadow.querySelectorAll('link[rel="stylesheet"]')].map(link=>link.sheet?null:new Promise((resolve,reject)=>{link.addEventListener("load",resolve,{once:true});link.addEventListener("error",()=>reject(Error("The interface styles could not load. Refresh the workspace.")),{once:true});})));
+        showInterface(node);
+    }catch(error){launchMessage("error",error.message);}
 }
 app.registerExtension({
     name:"MumbleboxFoundry.Interface.v1",
     async registerCustomNodes(){registerNode();},
     async setup(){registerNode();},
+    async afterLoadGraph(){ if(appMode&&!launching)queueMicrotask(openApplication); },
     async afterConfigureGraph(){
         const marker=app.graph.extra?.mumblebox_foundry;
         const node=marker&&app.graph.getNodeById(marker.interface_node_id);

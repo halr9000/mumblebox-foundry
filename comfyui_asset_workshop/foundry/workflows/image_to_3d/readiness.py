@@ -7,6 +7,18 @@ MODELS = {"turnaround":("qwen21","qwen21_clip","qwen21_vae","birefnet"),
           "geometry":("pixal_multiview","shape_vae","dino"),
           "refinement":("birefnet",), "texture":("birefnet",)}
 
+def required_stages(operation, selection):
+    """Prepare the remaining selected workflow before any new generation.
+
+    Manual review boundaries do not postpone downstream model acquisition.
+    Changed export choices are checked again when the user continues.
+    """
+    stages = ["turnaround", "geometry", "refinement"]
+    if any(variant != "print" for variant in selection["variants"]):
+        stages.append("texture")
+    first = {"turnaround": 0, "rocket": 0, "mesh": 1, "finish": 3}[operation]
+    return stages[first:]
+
 def ensure(stage, state_root, cancelled=lambda:False, owner=None, progress=lambda value:None, turnaround_model="qwen21"):
     import folder_paths
     from .... import models

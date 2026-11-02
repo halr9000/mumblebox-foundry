@@ -1,0 +1,62 @@
+import hashlib
+import json
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+import maintenance
+from bootstrap import Layout
+
+
+class MaintenanceTests(unittest.TestCase):
+    def test_bundle_rejects_tampering_and_unlisted_or_user_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);file=root/'README.md';file.write_text('release')
+            manifest={'README.md':hashlib.sha256(file.read_bytes()).hexdigest()}
+            inventory=root/'SHA256SUMS.json';inventory.write_text(json.dumps(manifest))
+            self.assertEqual(maintenance.verify_bundle(root),manifest)
+            file.write_text('tampered')
+            with self.assertRaisesRegex(ValueError,'checksum'):maintenance.verify_bundle(root)
+            file.write_text('release');(root/'extra.py').touch()
+            with self.assertRaisesRegex(ValueError,'unlisted'):maintenance.verify_bundle(root)
+            inventory.write_text(json.dumps({'.pinokio/data/output/asset.glb':'0'*64}))
+            with self.assertRaisesRegex(ValueError,'ownership'):maintenance.verify_bundle(root)
+
+    def test_local_source_changes_prevent_update(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'.git').mkdir()
+            with patch.object(maintenance,'capture',side_effect=[maintenance.REPOSITORY,' M start.js']):
+                with self.assertRaisesRegex(ValueError,'local source changes'):
+                    maintenance.require_clean_checkout(root)
+
+    def test_failed_staged_install_restores_app_and_config_not_outputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            layout=Layout(directory)
+            app=layout.comfy/'custom_nodes'/'comfyui_asset_workshop';app.mkdir(parents=True)
+            (app/'old.py').write_text('working')
+            config=layout.data/'user'/'asset-workshop.json';config.parent.mkdir(parents=True);config.write_text('{"keep":true}')
+            output=layout.data/'output'/'asset.glb';output.parent.mkdir();output.write_bytes(b'preserved asset')
+            def fail(root,source):
+                (app/'old.py').write_text('changed');(app/'new.py').write_text('new')
+                config.write_text('{}');raise RuntimeError('deliberate staged failure')
+            with self.assertRaisesRegex(RuntimeError,'deliberate'):
+                maintenance.apply_staged(layout,Path(directory)/'candidate','v2','previous',installer=fail)
+            self.assertEqual((app/'old.py').read_text(),'working')
+            self.assertFalse((app/'new.py').exists())
+            self.assertEqual(json.loads(config.read_text()),{'keep':True})
+            self.assertEqual(output.read_bytes(),b'preserved asset')
+            self.assertTrue((layout.state/'repair-required.json').exists())
+
+    def test_successful_staged_install_switches_to_verified_tag_and_clears_repair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            layout=Layout(directory);layout.state.mkdir()
+            (layout.state/'repair-required.json').write_text('{}')
+            calls=[]
+            with patch.object(maintenance,'run') as run:
+                maintenance.apply_staged(layout,Path(directory)/'candidate','v2','previous',installer=lambda *a:calls.append(a))
+                self.assertEqual(calls[0][0],layout.root)
+                run.assert_called_once_with(['git','checkout','--detach','v2'],layout.root)
+            self.assertFalse((layout.state/'repair-required.json').exists())
+
+
+if __name__=='__main__':unittest.main()

@@ -15,6 +15,8 @@ Key dependencies include ComfyUI (GPL-3.0), Blender (GPL-3.0), Pixal3D (MIT), TR
 
 The Hi3D client bridge is adapted from the T8 workbench. Its MIT notice is retained in `comfyui_asset_workshop/licenses/Hi3D-Workbench-MIT.txt`. Downloaded worker software remains upstream software with its own notices. The public package does not redistribute model weights.
 
+The texture worker downloads DINOv3 from https://huggingface.co/visualbruno/dinov3-vitl16-pretrain-lvd1689m at revision `8463e34549282813c2cbf67241b27c6fe8fa6321`, following the existing ComfyUI-Trellis2 download source. The three files retain the original expected SHA-256 hashes in `models.lock.json`; only their acquisition source changed. Public download availability does not replace the DINOv3 license, retained in `licenses/pipeline/DINOv3-LICENSE.md` inside the custom-node package. Export metadata records the acquisition repository, revision and hashes.
+
 Powered by Hi3D 1.0 - http://hi3d.ai/
 
 Workflow illustrations and the approved product logo were generated/edited for this project. Their role and provenance are described in `comfyui_asset_workshop/web/assets/foundry/ARTWORK.md`. They are interface artwork, not examples proving model output quality.

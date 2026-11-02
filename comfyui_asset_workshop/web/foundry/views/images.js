@@ -23,7 +23,7 @@ export async function render(shell){
                 if(!creator){creator=new ImageCreator(shell);shell.imageCreator=creator;await creator.init();}
                 if(disposed||current!==sequence){creator.detach();return;}
                 body.replaceChildren(creator.attach());childDispose=()=>creator.detach();
-            }catch(error){creator?.dispose();body.replaceChildren(el('p',{role:'alert'},error.message));}
+            }catch(error){creator?.dispose();body.replaceChildren(el('p',{role:'alert','data-connection-error':String(error.code==='FOUNDRY_OFFLINE')},error.message));}
             return;
         }
         body.replaceChildren(hint("Loading gallery…"));

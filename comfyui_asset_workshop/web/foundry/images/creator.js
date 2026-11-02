@@ -1,3 +1,4 @@
+import {modelAccessError} from "../connection-help.js";
 import {el,button,hint,field,link} from '../dom.js';
 import {request} from '../services.js';
 import {referenceControls} from './references.js';
@@ -53,7 +54,7 @@ export function creator(c){
     const review=el('div',{},el('div',{class:'creator-runbar'},button(busy?'Generating…':c.run?.status==='failed'?'Retry unfinished images':ready?'Reuse unchanged generation':c.paired()?'Generate front & back':'Generate image',()=>c.act(()=>c.generate()),{class:'primary',disabled:busy||c.working}),
         ready&&!busy?button('Generate a new variation',()=>c.act(()=>c.generate('regenerate'))):null,
         busy?button('Cancel generation',()=>c.act(async()=>{c.run=await request('images/'+c.id+'/cancel',{});})):null,c.progressText),
-        c.error?el('p',{class:'error-panel',role:'alert'},c.error):null,
+        c.error?modelAccessError(c.shell,c.error):null,
         busy?el('progress',{'aria-label':'Image generation in progress'}):null,
         el('div',{class:'creator-pair','data-paired':String(c.paired())},...frames),
         c.run?.pair_review?hint(c.run.pair_review):null,

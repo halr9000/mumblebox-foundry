@@ -845,7 +845,7 @@
   },
   "2001": {
     "inputs": {
-      "url": "http://127.0.0.1:8378"
+      "url": ""
     },
     "class_type": "Hi3DBackend",
     "_meta": {

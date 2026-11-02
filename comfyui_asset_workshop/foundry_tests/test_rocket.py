@@ -4,7 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from foundry.workflows.image_to_3d.runs import WizardRuns
 
@@ -20,7 +20,42 @@ class RocketTests(unittest.IsolatedAsyncioTestCase):
              "selection":{"variants":{k:{"formats":["glb"]} for k in variants}}}
         service.save(run)
         service.metadata=lambda r:{}
+        service.prepare_dependencies=AsyncMock()
         return service,run
+
+    async def test_dependencies_finish_before_first_generation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            service,run=self.service(temp,["game_compact"])
+            service.prepare_dependencies=WizardRuns.prepare_dependencies.__get__(service)
+            service.fresh=Mock(return_value=False)
+            order=[]
+            async def stage(run,name,**kwargs):order.append("run:"+name)
+            service.stage=stage
+            with patch("foundry.workflows.image_to_3d.readiness.ensure",side_effect=lambda name,*args:order.append("prepare:"+name)):
+                await service.execute(run,"rocket")
+            self.assertEqual(order[:5],["prepare:turnaround","prepare:geometry","prepare:refinement","prepare:texture","run:turnaround"])
+
+    async def test_dependency_failure_stops_before_generation_and_keeps_checkpoint(self):
+        with tempfile.TemporaryDirectory() as temp:
+            service,run=self.service(temp,["game_compact"])
+            run["stages"]["refinement"]={"saved":True}
+            service.prepare_dependencies=WizardRuns.prepare_dependencies.__get__(service)
+            service.fresh=Mock(return_value=False)
+            service.stage=AsyncMock()
+            with patch("foundry.workflows.image_to_3d.readiness.ensure",side_effect=ValueError("Access unavailable")):
+                await service.execute(run,"finish")
+            service.stage.assert_not_awaited()
+            self.assertEqual(run["status"],"failed")
+            self.assertEqual(run["stages"]["refinement"],{"saved":True})
+
+    async def test_preflight_reuses_saved_stages_and_print_only_avoids_texture(self):
+        with tempfile.TemporaryDirectory() as temp:
+            service,run=self.service(temp,["print"])
+            service.prepare_dependencies=WizardRuns.prepare_dependencies.__get__(service)
+            service.fresh=Mock(side_effect=lambda run,name:name=="turnaround")
+            with patch("foundry.workflows.image_to_3d.readiness.ensure") as ensure:
+                await service.prepare_dependencies(run,"rocket")
+            self.assertEqual([call.args[0] for call in ensure.call_args_list],["geometry","refinement"])
 
     async def test_rocket_print_only_keeps_geometry_and_skips_texture_and_game_bakes(self):
         with tempfile.TemporaryDirectory() as temp:

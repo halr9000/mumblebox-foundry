@@ -5,6 +5,18 @@ spec=importlib.util.spec_from_file_location("installer",Path(__file__).with_name
 installer=importlib.util.module_from_spec(spec);spec.loader.exec_module(installer)
 
 class InstallTests(unittest.TestCase):
+    def test_release_rejects_corrupted_interface_text(self):
+        spec=importlib.util.spec_from_file_location('builder',Path(__file__).with_name('build_release.py'))
+        builder=importlib.util.module_from_spec(spec);spec.loader.exec_module(builder)
+        with tempfile.TemporaryDirectory() as folder:
+            source=Path(folder)/'interface.js'
+            for data in (b'Front details \x97 optional', 'Front details \u00c2\u00b7 optional'.encode('utf-8')):
+                source.write_bytes(data)
+                with self.assertRaises(ValueError):builder.validate_text_encoding([source])
+            source.write_text('Front details \u00b7 optional',encoding='utf-8')
+            builder.validate_text_encoding([source])
+        builder.validate_text_encoding(builder.inventory())
+
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory(prefix="foundry-install-")
         self.root=Path(self.temp.name);self.core=self.root/"core"
@@ -22,6 +34,13 @@ class InstallTests(unittest.TestCase):
         builder=importlib.util.module_from_spec(spec);spec.loader.exec_module(builder)
         names={p.relative_to(builder.ROOT).as_posix() for p in builder.inventory()}
         self.assertIn('comfyui_asset_workshop/material_lab/material_editor.html',names)
+        for name in ('pinokio.js', 'pinokio.json', 'install.js', 'start.js', 'update.js',
+                     'repair.js', 'icon.png', 'scripts/pinokio/bootstrap.py',
+                     'scripts/pinokio/runtime.py', 'scripts/pinokio/maintenance.py',
+                     'scripts/pinokio/connect_agent.py', 'docs/PINOKIO.md'):
+            self.assertIn(name,names)
+        self.assertNotIn('scripts/pinokio/mcp.py',names)
+        self.assertFalse(any(name.startswith(('.pinokio/', 'bench/')) for name in names))
     def test_install_and_repeat_preserve(self):
         installer.install(self.args)
         target=self.core/"custom_nodes/comfyui_asset_workshop"

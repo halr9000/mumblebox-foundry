@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.0-preview.6
+
+- Corrected corrupted punctuation in image-creation labels and workflow progress text.
+- Reject invalid or corrupted UTF-8 source text during release packaging.
+- Corrected quad triangulation conflicts and small boundary caps while preserving the detailed master and disconnected components. Close temporary mesh archives before cleanup on Windows.
+- Added a Pinokio installer for the pinned ComfyUI host, TRELLIS finishing worker, Hi3D service, Blender and agent MCP environments.
+- Foundry opens directly inside Pinokio, with the graph still available through View Workflow. Matching the launcher's localhost address preserves ComfyUI's cross-site protection while allowing the embedded interface to load.
+- Added owned-service startup and shutdown, installation-specific loopback ports, restart recovery, verified release updates and software repair that preserves user data.
+- Kept model weights as first-use downloads. Installing or opening Foundry does not download generation models.
+- Added installation-specific MCP configuration and a launcher that follows the current local service address.
+- Included Pinokio scripts, the approved icon and installation instructions in the portable release archive. Generated test assets and private settings remain excluded.
+- Retained GUI-only presentation after embedded refresh, resolved the configured Hi3D address at runtime, and made Rocket retries continue from saved stages.
+- Added bounded retries for transient Windows locks while Hi3D writes model-download status; completed model files are reused.
+- Keep the same local addresses across restarts, show connection recovery in the embedded app, and retry failed page loads after reconnection without resubmitting generation.
+- Fixed DINOv3 texture preparation to use the public distribution already used by the upstream TRELLIS node. The pinned files and SHA-256 checksums are unchanged; this download no longer depends on Meta's Hugging Face approval queue.
+- Prepare all missing models for the selected workflow before generation begins, including back-view dependencies for image pairs. Files are downloaded to disk; stages still manage their own memory and model offloading.
+- Model-access errors now link directly to the affected repository and Hugging Face settings. Retry retains verified completed mesh stages.
+- Declare the texture worker's ComfyUI utility dependencies in its isolated environment and import the actual texture entry point during installation, before reporting success.
+
 ## 0.1.0-preview.5
 
 - Added an independent image creation workflow in the existing Foundry graph, with a compact scrolling creator and section navigator.

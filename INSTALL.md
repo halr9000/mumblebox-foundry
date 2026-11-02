@@ -1,12 +1,14 @@
 # Install Mumblebox 3D Asset Foundry
 
+For an isolated installation managed by Pinokio, use [the Pinokio instructions](docs/PINOKIO.md). The steps below are for adding Foundry to an existing ComfyUI installation.
+
 This preview runs locally on Windows with an NVIDIA GPU. It uses three Python environments: the existing ComfyUI host, an isolated texture/finishing worker, and a local Hi3D workbench. Keep their PyTorch installations separate. All example paths below are examples, not required machine paths.
 
 Use a local directory outside OneDrive. Install Git, Python 3.13, Python 3.10, a current NVIDIA driver, and Blender 5.2.2 LTS. The validated system has 16 GB VRAM and 64 GB RAM; lower-memory machines are not yet qualified.
 
 ## 1. ComfyUI
 
-Use a recent ComfyUI with native Qwen Image 2.1 and Pixal3D multiview support. The reference core revision is `483dae4326356b81de05d27aca3f433dd323cc25`, with frontend 0.42.5. An older installation missing these nodes must be updated before loading the workflow. Comfy Desktop and a separately installed ComfyUI both work with the node package; use the actual core directory containing `folder_paths.py` and `custom_nodes`.
+Use a recent ComfyUI with native Qwen Image 2.1 and Pixal3D multiview support. The reference core revision is `483dae4326356b81de05d27aca3f433dd323cc25` (core 0.42.5), with frontend `1.59.0.dev2`. An older installation missing these nodes must be updated before loading the workflow. Comfy Desktop and a separately installed ComfyUI both work with the node package; use the actual core directory containing `folder_paths.py` and `custom_nodes`.
 
 Extract this release into a separate folder, for example `C:\Tools\foundry-release`. Install the lightweight host dependencies using **ComfyUI's own Python**:
 
@@ -33,8 +35,10 @@ Install the five **cp313 / win_amd64** wheels from the checked-out wrapper's `wh
 
 ```powershell
 $wheelFolder = 'C:\Tools\foundry-trellis\wheels\Windows\Torch2100\CUDA 13.1'
-Get-ChildItem -LiteralPath $wheelFolder -Filter '*cp313*win_amd64.whl' | ForEach-Object {
-    & 'C:\Tools\foundry-worker\Scripts\python.exe' -m pip install $_.FullName
+foreach ($package in @('cumesh','flex_gemm','nvdiffrast','nvdiffrec_render','o_voxel')) {
+    $wheel = @(Get-ChildItem -LiteralPath $wheelFolder -Filter "$package-*-cp313-cp313-win_amd64.whl")
+    if ($wheel.Count -ne 1) { throw "Expected one matching wheel for $package" }
+    & 'C:\Tools\foundry-worker\Scripts\python.exe' -m pip install $wheel[0].FullName
     if ($LASTEXITCODE -ne 0) { throw 'Worker wheel installation failed' }
 }
 New-Item -ItemType Directory -Force C:\Tools\foundry-texture-models

@@ -66,6 +66,18 @@ def register(routes, library, preferences, wizard_factory=None, resources=None, 
         async def resource_remove(request):
             return await asyncio.to_thread(resources.remove,(await body(request)).get("token"))
 
+    @routes.get("/mumblebox-foundry/")
+    @endpoint
+    async def app_entry(request):
+        page = Path(__file__).resolve().parents[1] / "web" / "foundry" / "app.html"
+        return web.Response(text=page.read_text(encoding="utf-8-sig"), content_type="text/html",
+                            headers={"Cache-Control": "no-store", "Referrer-Policy": "same-origin"})
+
+    @routes.get(PREFIX + "/workflow")
+    @endpoint
+    async def packaged_workflow(request):
+        path = Path(__file__).resolve().parents[1] / "workflows" / "Mumblebox 3D Asset Foundry.json"
+        return json.loads(path.read_text(encoding="utf-8-sig"))
     @routes.get(PREFIX + "/bootstrap")
     @endpoint
     async def bootstrap(request):

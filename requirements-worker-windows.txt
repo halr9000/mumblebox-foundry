@@ -3,7 +3,8 @@ triton-windows==3.6.0.post26
 transformers==4.57.6
 safetensors==0.8.0
 trimesh==5.2.0
-pyQuadriFlow==0.2.0
+# The maintained binding publishes Windows wheels on its official GitHub release, not PyPI.
+pyquadriflow @ https://github.com/PozzettiAndrea/pyQuadriFlow/releases/download/v0.2.0/pyquadriflow-0.2.0-cp312-abi3-win_amd64.whl#sha256=201f79ea664b63ac5b77b1356269fe84c7c7694caade763ad162fd9b6d264633
 pynanoinstantmeshes==0.0.3
 pymeshlab==2025.7.post1
 meshlib==3.1.4.297
@@ -14,5 +15,11 @@ opencv-python==5.0.0.93
 einops==0.8.2
 easydict==1.13
 huggingface-hub==0.36.2
+# The upstream texture node imports ComfyUI's model-management utilities.
+psutil==7.2.2
+comfy-aimdo==0.5.6
+comfy-kitchen==0.2.39
+PyYAML==6.0.3
+blake3==1.0.11
 requests
 rtree

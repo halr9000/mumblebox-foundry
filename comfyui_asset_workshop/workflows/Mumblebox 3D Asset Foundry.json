@@ -3342,7 +3342,7 @@
         "Node name for S&R": "Hi3DBackend"
       },
       "widgets_values": [
-        "http://127.0.0.1:8378"
+        ""
       ]
     },
     {

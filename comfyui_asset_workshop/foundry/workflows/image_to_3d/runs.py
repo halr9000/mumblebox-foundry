@@ -231,6 +231,7 @@ class WizardRuns:
 
     async def execute(self, run, operation):
         try:
+            await self.prepare_dependencies(run, operation)
             # stage() reuses validated checkpoints, so Rocket can enter from any page.
             # The backend owns continuation; it never depends on a browser staying open.
             if operation in ("turnaround","rocket"):
@@ -253,6 +254,8 @@ class WizardRuns:
             run.update(status="cleaning",error="")
         except asyncio.CancelledError:
             run.update(status="cancelled",error="Generation cancelled. Completed stages and saved files are retained.")
+        except InterruptedError as error:
+            run.update(status="cancelled" if run.get("cancel") else "failed",error=str(error))
         except Exception as error:
             run.update(status="failed",error=str(error))
         finally:
@@ -266,6 +269,23 @@ class WizardRuns:
             if run["status"]=="cleaning":run["status"]="complete"
             self.tasks.pop(run["id"],None)
             self.save(run)
+
+    async def prepare_dependencies(self, run, operation):
+        from .readiness import ensure, required_stages
+        self.require_not_cancelled(run)
+        run["stage"] = "preparing"
+        self.event(run, "Preparing models for the remaining selected workflow before generation.")
+        loop = asyncio.get_running_loop()
+        def progress(value):
+            loop.call_soon_threadsafe(lambda: run.update(dependency=value))
+        for stage in required_stages(operation, run["selection"]):
+            if await asyncio.to_thread(self.fresh, run, stage):
+                continue
+            self.require_not_cancelled(run)
+            await asyncio.to_thread(ensure, stage, self.root, lambda: run.get("cancel", False),
+                                    run["id"], progress, run.get("turnaround_model", "qwen21"))
+        run.pop("dependency", None)
+        self.require_not_cancelled(run)
 
     async def stage(self, run, stage, reuse=True):
         self.require_not_cancelled(run)
@@ -396,8 +416,12 @@ class WizardRuns:
         bound=bind_references(run["category"],run["references"],spec["id"])
         lineage["turnaround"]={k:spec[k] for k in ("id","name","steps","cfg","width","height","sampler","scheduler","source","license","license_url")}
         lineage["turnaround"].update(recipe=bound["recipe"],guidance=bound["guidance"],prompt_source=bound["source"],seed=run["settings"]["turnaround_seed"])
-        lock=json.loads(Path(__file__).resolve().parents[3].joinpath("models.lock.json").read_text(encoding="utf-8"))["models"]
+        model_lock=json.loads(Path(__file__).resolve().parents[3].joinpath("models.lock.json").read_text(encoding="utf-8"))
+        lock=model_lock["models"]
         lineage["models"]={key:{field:lock[key][field] for field in ("repo","file","revision","sha256")}
                            for key in (*spec["keys"],"birefnet","pixal_multiview","shape_vae","dino")}
+        if any(variant != "print" for variant in run["selection"]["variants"]):
+            lineage["texture_models"] = [{field:item[field] for field in ("name","repo","file","revision","sha256")}
+                                        for item in model_lock["worker_models"]["trellis_texture"]]
         if run.get('image_creation'):lineage['image_creation']=run['image_creation']
         return {"workflow_version":VERSION,"receipts":receipts,"production":lineage}

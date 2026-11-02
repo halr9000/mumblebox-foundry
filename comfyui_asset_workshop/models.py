@@ -129,7 +129,7 @@ def download_one(model, *, destination_root=None):
             if error.code in (401, 403):
                 DOWNLOAD["recovery"] = {**source, "kind": "access", "http_status": error.code}
                 raise ValueError(f"Hugging Face denied access to {model['name']} (HTTP {error.code}). "
-                                 "Open this model's Hugging Face page to request or accept access, then connect "
+                                 f"Model access page: {source['repo_url']} . Request or accept access there, then connect "
                                  "a read token for the same account and retry. If access is pending, wait for approval. "
                                  "A token does not accept the model's terms for you.") from None
             raise

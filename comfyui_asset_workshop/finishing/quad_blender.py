@@ -67,7 +67,25 @@ elif stage=="repair":
     bmesh.ops.dissolve_degenerate(bm,dist=1e-10,edges=list(bm.edges))
     boundary=[e for e in bm.edges if e.is_boundary]
     filled=bmesh.ops.holes_fill(bm,edges=boundary,sides=16) if boundary else {"faces":[]}
-    caps=filled["faces"]
+    caps=list(filled["faces"])
+    # Blender can skip a triangular hole when two of its edges belong to the
+    # same quad. Fill only a complete three-edge boundary cycle here. The
+    # worker has already restricted every hole by size and checks the closed
+    # surface again after this operation.
+    remaining={e for e in bm.edges if e.is_boundary}
+    while remaining:
+        seed=remaining.pop();loop_edges={seed};loop_verts=set(seed.verts)
+        pending=list(seed.verts)
+        while pending:
+            vertex=pending.pop()
+            for edge in list(vertex.link_edges):
+                if edge in remaining:
+                    remaining.remove(edge);loop_edges.add(edge)
+                    for other in edge.verts:
+                        if other not in loop_verts:loop_verts.add(other);pending.append(other)
+        if len(loop_edges)==3 and len(loop_verts)==3 and all(
+                sum(v in e.verts for e in loop_edges)==2 for v in loop_verts):
+            caps.append(bm.faces.new(list(loop_verts)))
     if caps:
         bmesh.ops.triangulate(bm,faces=list(caps),quad_method="FIXED",ngon_method="BEAUTY")
     bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces))

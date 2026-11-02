@@ -31,6 +31,23 @@ def read_obj(path):
     validate_polygons(vertices,faces)
     return vertices,faces
 
+def normalize_quad_diagonals(faces):
+    """Preserve polygons and winding while avoiding an existing edge as a diagonal.
+
+    Fixed fan triangulation is used for validation and baking. A legal polygon
+    surface can otherwise appear nonmanifold solely because of its start index.
+    """
+    edge_set={tuple(sorted((p[i],p[(i+1)%len(p)]))) for p in faces for i in range(len(p))}
+    result=[];rotations=0
+    for face in faces:
+        p=list(face)
+        if len(p)==4 and tuple(sorted((p[0],p[2]))) in edge_set:
+            if tuple(sorted((p[1],p[3]))) in edge_set:
+                raise ValueError("Quad has no safe fixed diagonal")
+            p=p[1:]+p[:1];rotations+=1
+        result.append(p)
+    return result,rotations
+
 def allocate_budget(areas,total,minimum=24):
     if not areas or total<len(areas)*minimum or any(not math.isfinite(float(a)) or a<0 for a in areas) or sum(areas)<=0:raise ValueError('Invalid component budget')
     remaining=total-len(areas)*minimum

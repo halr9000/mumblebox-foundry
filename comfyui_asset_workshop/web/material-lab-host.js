@@ -25,7 +25,7 @@ export async function openMaterialLab(c,appearance){
  const apply=async()=>{
   if(applying)return;applying=true;
   try{
-  await flush();send('material-editor-status',{message:'Generating assigned materials in ComfyUI…',busy:true});if(c.project.id!==pid)throw Error('Return to this project before generating materials.');
+  await flush();send('material-editor-status',{message:'Generating assigned materials in ComfyUIâ€¦',busy:true});if(c.project.id!==pid)throw Error('Return to this project before generating materials.');
   const job=await c.start('apply_materials',{session_id:session.id});await c.waitJob(job);
   session=await request(path+`/materials/${session.id}?expand_masks=1`);const record=c.project.artifacts.find(a=>a.id===session.rendered_artifact_id);
   if(record)send('material-editor-result',{result:{url:PREFIX+path+`/artifacts/${record.id}`,report:{regions_applied:record.material_region_count??session.draft.regions.length}}});

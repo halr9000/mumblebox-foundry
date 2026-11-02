@@ -4,6 +4,10 @@ The companion MCP uses the same local HTTP services as the wizard. It does not l
 
 ## Install
 
+**Pinokio installation:** Start Foundry, then copy the `mumblebox-foundry` entry from `<Pinokio home>/api/mumblebox-foundry/.pinokio/mcp.json` into your agent's MCP configuration. The launcher installs the SDK and generates this entry with the actual local paths. Its `connect_agent.py` wrapper reads the current runtime address on each connection, so ports are not hard-coded. It permits local reference imports only from this installation's `.pinokio/data/input` folder. Add additional explicit input roots only when authorized. Keep Foundry open inside Pinokio so generated work is available for review.
+
+**Existing ComfyUI installation:**
+
 Create a small separate Python environment and install `comfyui_asset_workshop/agent/requirements.txt` (mcp==2.3.0). Start ComfyUI with the Foundry package and open the Foundry graph before using the tools.
 
 Example MCP client configuration; replace every example path with your installation:

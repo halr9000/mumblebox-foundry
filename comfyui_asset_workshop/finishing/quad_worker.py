@@ -3,7 +3,7 @@ import json,sys,time,subprocess,os,psutil,hashlib,shutil
 from pathlib import Path
 import numpy as np
 import trimesh
-from quad_contract import read_obj,write_obj,triangles_to_quads
+from quad_contract import read_obj,write_obj,triangles_to_quads,normalize_quad_diagonals
 HERE=Path(__file__).parent
 sys.path.insert(0,str(HERE.parent/"pipeline_workers"))
 from mesh_optimize_worker import simplify_mesh,rebake_maps,comfy_uvs
@@ -119,6 +119,9 @@ def geometry(req):
         limit=np.linalg.norm(part.extents)*.02
         if (distances>limit).any(): raise ValueError("Retopology moved beyond the 2% component projection guard")
         v=nearest
+        # Normalize before measuring defects; a fixed diagonal is not a surface edge.
+        f,rotations=normalize_quad_diagonals(f)
+        if rotations:details.append({"method":"polygon-start rotation before repair gate","rotated_quads":rotations})
         check=stats(v,f)
         if check["boundary_edges"] or check["degenerate_triangles"]:
             if check["nonmanifold_edges"] or check["boundary_edges"]>max(100,len(f)*.02):
@@ -134,12 +137,7 @@ def geometry(req):
             details.append({"method":"Blender component-local cleanup","repair":json.loads((job/"remesh-repair.json").read_text())})
             # A legal quad surface can still have a diagonal matching another polygon edge.
             # Rotate only the polygon start index to keep fixed bake/runtime triangulation manifold.
-            edge_set={tuple(sorted((p[i],p[(i+1)%len(p)]))) for p in f for i in range(len(p))}
-            rotations=0
-            for j,p in enumerate(f):
-                if len(p)==4 and tuple(sorted((p[0],p[2]))) in edge_set:
-                    if tuple(sorted((p[1],p[3]))) in edge_set:raise ValueError("Quad has no safe fixed diagonal")
-                    f[j]=p[1:]+p[:1];rotations+=1
+            f,rotations=normalize_quad_diagonals(f)
             if rotations:details.append({"method":"polygon-start rotation for manifold fixed triangulation","rotated_quads":rotations})
             check=stats(v,f)
         if not check["watertight"] or check["nonmanifold_edges"] or check["degenerate_triangles"] or not check["winding_consistent"]:

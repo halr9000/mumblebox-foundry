@@ -140,11 +140,12 @@ class Hi3DQuadFinish:
             timings["geometry"]=run(req,"geometry",mm.throw_exception_if_processing_interrupted)
             cache.write_text(json.dumps({"job":str(job),"key":key}))
         timings["appearance"]=run(req,"appearance",mm.throw_exception_if_processing_interrupted)
-        a=np.load(job/"native-arrays.npz")
         def image(name):
             return torch.from_numpy(np.asarray(Image.open(job/name).convert("RGB")).copy().astype(np.float32)/255).unsqueeze(0)
         base=image("baked-base-color.png");mr=image("baked-metallic-roughness.png")
-        low=native_mesh(a["vertices"],a["faces"],a["uvs"],a["normals"],base,mr)
+        # Close the archive before owned scratch cleanup (Windows retains its lock).
+        with np.load(job/"native-arrays.npz",allow_pickle=False) as arrays:
+            low=native_mesh(arrays["vertices"],arrays["faces"],arrays["uvs"],arrays["normals"],base,mr)
         start=time.monotonic()
         normal=BakeNormalMapFromMesh.execute(low,mesh,texture_size,cage_distance,True)[0]
         baked=ApplyTextureToMesh.execute(low,base,normal_map=normal)[0]

@@ -9,6 +9,7 @@ import {home} from "./views/home.js";
 import {showWorkflow} from "./graph-adapter.js";
 import {api} from "/scripts/api.js";
 import {app} from "/scripts/app.js";
+import {launchMessage} from "./app-mode.js";
 
 export class FoundryShell {
     constructor(host,node) {
@@ -90,6 +91,10 @@ export class FoundryShell {
     }
     message(text,error=false) {this.notice.textContent=text;this.notice.dataset.error=String(error);}
     resources(data) {
+        const reconnect=this.disconnected&&!!data;
+        this.disconnected=!data;
+        launchMessage("connection",data?"online":"offline");
+        if(reconnect&&this.content.querySelector('[data-connection-error="true"]'))this.retryView?.();
         const wasRunning=this.status?.running;
         this.status=data;
         this.vram.update(data?.vram_used,data?.vram_total);
@@ -113,6 +118,7 @@ export class FoundryShell {
         await this.open("Images");
     }
     async open(name) {
+        this.retryView=()=>this.open(name);
         this.viewDispose?.();this.viewDispose=null;
         this.tab=name;this.sequence=(this.sequence||0)+1;const sequence=this.sequence;
         [...this.nav.children].forEach((n,i)=>{n.setAttribute("aria-selected",String(this.tabs[i]===name));n.tabIndex=this.tabs[i]===name?0:-1;});
@@ -126,10 +132,11 @@ export class FoundryShell {
             const view=await module.render(this,"mesh");
             if(sequence!==this.sequence){view.dispose?.();return;}
             this.content.replaceChildren(view.element||view);this.viewDispose=view.dispose;
-        } catch(error) {if(sequence===this.sequence)this.content.replaceChildren(el("p",{},error.message),button("Retry",()=>this.open(name)));}
+        } catch(error) {if(sequence===this.sequence)this.content.replaceChildren(el("p",{"data-connection-error":String(error.code==="FOUNDRY_OFFLINE")},error.message),button("Retry",()=>this.open(name)));}
     }
 
     async openWizard({resume=false,runId=null}={}){
+        this.retryView=()=>this.openWizard({resume,runId});
         this.viewDispose?.();this.viewDispose=null;this.sequence=(this.sequence||0)+1;
         const sequence=this.sequence;
         this.tab="Choose a Workflow";
@@ -146,7 +153,7 @@ export class FoundryShell {
             this.content.setAttribute("aria-label","Image to 3D wizard");
             this.viewDispose=()=>wizard.dispose();
             this.wizard=wizard;
-        }catch(error){wizard?.dispose();this.content.replaceChildren(el("p",{role:"alert"},error.message));}
+        }catch(error){wizard?.dispose();this.content.replaceChildren(el("p",{role:"alert","data-connection-error":String(error.code==="FOUNDRY_OFFLINE")},error.message));}
     }
 
     async settings(options={}) {

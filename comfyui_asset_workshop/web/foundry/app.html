@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mumblebox 3D Asset Foundry</title>
+<style>
+html,body{margin:0;width:100%;height:100%;background:#11150f;color:#f3f6ef;font:16px/1.5 system-ui,sans-serif}iframe{border:0;width:100%;height:100%;display:block;visibility:hidden}main{z-index:2;position:fixed;inset:0;display:grid;place-content:center;text-align:center;padding:24px}h1{font-size:24px;margin:0 0 12px}p{max-width:540px;color:#bcc8b6}button{background:#b7f34c;color:#11150f;border:0;border-radius:8px;padding:12px 20px;font:inherit;cursor:pointer}[hidden]{display:none!important}.pulse{width:32px;height:32px;border:3px solid #617458;border-top-color:#b7f34c;border-radius:50%;animation:spin 1.4s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.pulse{animation:none}}
+</style></head><body>
+<main id="loading"><div class="pulse" aria-hidden="true"></div><h1>Loading Mumblebox 3D Asset Foundry</h1><p id="message" role="status">Opening your workspace. Models download only when a workflow first needs them.</p><button id="retry" hidden>Try again</button></main>
+<iframe id="workspace" title="Mumblebox 3D Asset Foundry workspace" src="/?foundry-app=1" allow="camera; clipboard-write; fullscreen"></iframe>
+<script>
+const frame=document.getElementById('workspace'),loading=document.getElementById('loading'),message=document.getElementById('message'),retry=document.getElementById('retry');
+let ready=false;
+let timer=setTimeout(()=>{message.textContent='The workspace is taking longer to open. Check the launcher logs if it does not finish.';retry.hidden=false;},90000);
+window.addEventListener('message',event=>{
+ if(event.origin!==location.origin||event.source!==frame.contentWindow||event.data?.source!=='mumblebox-foundry')return;
+ if(event.data.type==='ready'){clearTimeout(timer);ready=true;loading.hidden=true;frame.style.visibility='visible';}
+ if(event.data.type==='connection'&&ready){
+   const online=event.data.message==='online';
+   loading.hidden=online;
+   if(!online){loading.querySelector('h1').textContent='Reconnecting to Foundry';message.textContent='The local service is restarting or disconnected. Keep this window open; it reconnects automatically when Foundry is ready. If you stopped it, click Start Foundry in Pinokio.';retry.hidden=true;}
+ }
+ if(event.data.type==='error'){clearTimeout(timer);loading.hidden=false;message.textContent=event.data.message||'The workspace could not open.';retry.hidden=false;}
+});
+retry.onclick=()=>location.reload();
+</script></body></html>

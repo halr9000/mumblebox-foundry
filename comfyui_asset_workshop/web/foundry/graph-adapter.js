@@ -1,4 +1,5 @@
 import {app} from "/scripts/app.js";
+import {appMode,presentation,launchMessage} from "./app-mode.js";
 import {hasWork,retainSession} from "./wizard/session.js";
 import {syncTurnaroundBranch} from "./turnaround-graph.js";
 export const NODE_TYPE = "MumbleboxFoundry/Interface";
@@ -21,8 +22,9 @@ function frame(bounds) {
         viewport:[85,195,Math.max(480,rect.width-525),Math.max(350,rect.height-255)]});
     app.canvas.setDirty(true,true);
 }
-export function showInterface(node) { frame([node.pos[0],node.pos[1]-30,node.size[0],node.size[1]+40]); }
+export function showInterface(node) { if(appMode&&presentation.show(node)){launchMessage("ready");return;} frame([node.pos[0],node.pos[1]-30,node.size[0],node.size[1]+40]); }
 export function showWorkflow(node) {
+    if(appMode)presentation.graph();
     const input = referenceNode();
     if (input) frame([input.pos[0]-60,input.pos[1]-80,1900,1150]);
     else {

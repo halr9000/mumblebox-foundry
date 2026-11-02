@@ -11,6 +11,7 @@ ROOT = Path(__file__).parent
 
 def main():
     request = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+    probe_only = '--probe' in sys.argv[2:]
     sys.argv = [sys.argv[0]]
     core = Path(request['comfy_core'])
     sys.path.extend([str(core), str(core / '.venv' / 'Lib' / 'site-packages')])
@@ -38,6 +39,10 @@ def main():
     config.set_backend('sdpa')
     sparseconfig.set_attn_backend('sdpa')
     sparseconfig.set_conv_backend('flex_gemm')
+
+    if probe_only:
+        print('Texture worker imports OK; no model weights loaded', flush=True)
+        return
 
     arrays = np.load(request['mesh'])
     mesh = trimesh.Trimesh(vertices=arrays['vertices'], faces=arrays['faces'], process=False)
