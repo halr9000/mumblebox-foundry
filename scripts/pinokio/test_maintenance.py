@@ -9,6 +9,30 @@ from bootstrap import Layout
 
 
 class MaintenanceTests(unittest.TestCase):
+    def test_stop_owned_runtime_rejects_an_unrelated_process(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'.pinokio').mkdir()
+            (root/'.pinokio'/'runtime.json').write_text('{"pid":123,"instance":"owned"}')
+            with patch('psutil.Process') as lookup:
+                process=lookup.return_value
+                process.cmdline.return_value=['python','unrelated.py'];process.cwd.return_value=str(root)
+                with self.assertRaisesRegex(ValueError,'not this Foundry runtime'):
+                    maintenance.stop_owned_runtime(root)
+                process.terminate.assert_not_called()
+
+    def test_stop_owned_runtime_checks_idle_and_waits_for_exit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'.pinokio').mkdir()
+            runtime=root/'.pinokio'/'runtime.json';runtime.write_text('{"pid":123,"instance":"owned"}')
+            with patch('psutil.Process') as lookup,patch.object(maintenance,'require_idle') as idle:
+                process=lookup.return_value
+                process.cmdline.return_value=['python','scripts/pinokio/runtime.py','--root','.']
+                process.cwd.return_value=str(root)
+                maintenance.stop_owned_runtime(root)
+                idle.assert_called_once_with(root.resolve())
+                process.terminate.assert_called_once();process.wait.assert_called_once_with(timeout=20)
+                self.assertFalse(runtime.exists())
+
     def test_running_or_queued_jobs_prevent_the_update_stop(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);(root/'.pinokio').mkdir()

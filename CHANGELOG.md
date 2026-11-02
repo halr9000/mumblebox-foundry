@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-preview.8
+
+- Complete the running-app update repair: resolve the owned startup script explicitly and stop the verified installation runtime before acquiring the update lock. Pinokio can close its terminal while the Python runtime is still alive; other installations and active generation are protected.
+- Includes preview.7's Roadmap tab, clipboard repair and startup/manual version-check improvements.
+
 ## 0.1.0-preview.7
 
 - Added the Roadmap tab after About, organized by interface, monitoring, workflow improvements, upcoming workflows, model evaluations and integration.

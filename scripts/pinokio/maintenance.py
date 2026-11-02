@@ -37,6 +37,27 @@ def require_idle(root,read=None):
     print('Foundry is idle; it can be stopped safely for the update.',flush=True)
 
 
+def stop_owned_runtime(root):
+    """Pinokio may close its terminal while its Python child is still running."""
+    import psutil
+    root=Path(root).resolve();runtime=root/'.pinokio'/'runtime.json'
+    if not runtime.exists():return
+    record=json.loads(runtime.read_text(encoding='utf-8'))
+    try:process=psutil.Process(record['pid'])
+    except psutil.NoSuchProcess:return
+    command=process.cmdline();cwd=Path(process.cwd()).resolve()
+    script=next((arg for arg in command[1:] if arg.endswith('runtime.py')),None)
+    if not script or (cwd/script).resolve()!=root/'scripts'/'pinokio'/'runtime.py' or cwd!=root:
+        raise ValueError('The saved process is not this Foundry runtime. No process was stopped.')
+    require_idle(root)
+    # Closing this exact runtime also closes its Windows job object, which owns
+    # only this installation's ComfyUI and Hi3D process trees.
+    process.terminate();process.wait(timeout=20)
+    if runtime.exists() and json.loads(runtime.read_text()).get('instance')==record.get('instance'):
+        runtime.unlink()
+    print('Stopped this installation\'s owned runtime.',flush=True)
+
+
 def require_clean_checkout(root):
     if not (root/'.git').exists():
         raise ValueError('Update requires the GitHub checkout installed by Pinokio. Your files were preserved.')
@@ -156,6 +177,8 @@ def apply_staged(layout,staged,tag,old_commit,installer=None):
 def maintain(root,action,tag=None):
     if action=='check-idle':
         require_idle(root);return
+    if action=='stop-owned':
+        stop_owned_runtime(root);return
     layout=Layout(root)
     with InstallationLock(layout.state/'operation.lock'):
         if action=='repair':
@@ -182,7 +205,7 @@ def maintain(root,action,tag=None):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=('update','repair','check-idle'))
+    parser.add_argument('action',choices=('update','repair','check-idle','stop-owned'))
     parser.add_argument('--root',type=Path,default=Path(__file__).resolve().parents[2])
     parser.add_argument('--release-tag')
     args=parser.parse_args()

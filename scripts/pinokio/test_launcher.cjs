@@ -15,9 +15,12 @@ test('running menu embeds Foundry on the same site as Pinokio Desktop',async()=>
 test('updater checks jobs before stopping and restarts after installing',()=>{
   const update=require('../../update.js');
   assert.match(update.run[0].params.message,/check-idle/);
-  assert.equal(update.run[1].method,'script.stop');
-  assert.match(update.run[2].params.message,/maintenance.py update/);
-  assert.equal(update.run[3].method,'script.start');
+  assert.match(update.run[1].params.message,/stop-owned/);
+  assert.equal(update.run[2].method,'script.stop');
+  assert.equal(update.run[2].params.uri,require('path').resolve(__dirname,'../../start.js'));
+  assert.match(update.run[3].params.message,/maintenance.py update/);
+  assert.equal(update.run[4].method,'script.start');
+  assert.equal(update.run[4].params.uri,update.run[2].params.uri);
 });
 test('installer reuses an existing launcher environment',()=>{
   const install=require('../../install.js');
