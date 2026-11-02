@@ -1,5 +1,5 @@
 import {el,button,hint} from "../dom.js";
-import {showWorkflow,savedWizardState} from "../graph-adapter.js";
+import {showWorkflow,showHairWorkflow,savedWizardState} from "../graph-adapter.js";
 
 const planned=[
 ["repair","Refine and Repair an Existing Mesh","Supply an existing mesh and a matching image for refinement and new output versions."],
@@ -7,7 +7,12 @@ const planned=[
 ["turntable","PC-Controlled Turntable and Camera Capture","Capture a subject with a compatible ComXim Bluetooth turntable and connected camera."],
 ["figure","Action Figure Mode","Use identity references and figure presets to create a personalized figure, with optional base choices."]
 ];
-const artwork=(id,alt)=>el("img",{src:new URL("../../assets/foundry/"+id+".png",import.meta.url).href,alt,loading:"lazy",decoding:"async",width:512,height:512});
+const artwork=(id,alt)=>{
+    const url=new URL("../../assets/foundry/"+id+".png",import.meta.url);
+    // New artwork must not reuse a cached failed response from an older install.
+    url.searchParams.set('v','hairdeck-1');
+    return el("img",{src:url.href,alt,loading:"lazy",decoding:"async",width:512,height:512});
+};
 
 export function home(shell) {
     const saved = savedWizardState(shell.node);
@@ -22,8 +27,17 @@ export function home(shell) {
                 button("View Workflow",()=>showWorkflow(shell.node)),
                 saved?button("Resume previous asset",()=>shell.openWizard({resume:true}),{title:saved.draft?.name||"Resume saved work"}):null),
             hint("Choose your export versions and formats before finishing.")));
-    const imageCard=el('article',{class:'planned-workflow'},artwork('text','Develop images from a description'),el('div',{},el('span',{class:'badge'},'Available'),
-        el('h3',{},'Create Images and 3D Assets from a Text Prompt'),hint('Describe an asset to create matching front and back references, or make a standalone image. Edit the result and optionally continue into 3D.'),
-        button('Create Images',()=>{delete shell.imageOrigin;shell.openImages('Create Images');},{class:'primary'})));
-    return el("div",{},card,el("div",{class:"future-workflows"},imageCard,...planned.map(([id,name,description])=>el("article",{class:"planned-workflow"},artwork(id,name),el("div",{},el("span",{class:"badge"},"Coming soon"),el("h3",{},name),hint(description))))));
+    const imageCard=el('article',{class:'planned-workflow'},artwork('text','Develop images from a description'),el('div',{},
+        el('div',{class:'workflow-card-heading'},el('span',{class:'badge'},'Available'),
+            button('Create Images',()=>{delete shell.imageOrigin;shell.openImages('Create Images');},{class:'primary'})),
+        el('h3',{},'Create Images and 3D Assets from a Text Prompt'),
+        hint('Create and edit matching asset references or a standalone image, then optionally continue into 3D.')));
+    const hairCard=el('article',{class:'planned-workflow'},artwork('hair','Stylized hair cards with matching spring bones'),el('div',{},
+        el('div',{class:'workflow-card-heading'},el('span',{class:'badge'},'HairDeck'),
+            el('div',{class:'workflow-card-controls'},button('Open Hair Wizard',()=>shell.openHairWizard(),{class:'primary'}),
+                button('View Graph',()=>showHairWorkflow(),{title:'View Hair Workflow'}),
+                shell.node.properties.foundryHair?.runId?button('Resume',()=>shell.openHairWizard({resume:true}),{title:'Resume hair asset'}):null)),
+        el('h3',{},'Create Rigged Hair with HairDeck'),
+        hint('Create editable stylized hair cards. Fit, color and export static GLB or spring-bone VRM, with optional motion preview.')));
+    return el("div",{},card,el("div",{class:"future-workflows"},imageCard,hairCard,...planned.map(([id,name,description])=>el("article",{class:"planned-workflow"},artwork(id,name),el("div",{},el("span",{class:"badge"},"Coming soon"),el("h3",{},name),hint(description))))));
 }

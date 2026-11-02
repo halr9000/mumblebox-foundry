@@ -1,3 +1,16 @@
+# Preview 0.1.0-preview.10 validation
+
+Validated on 2026-11-02. HairDeck adds a separate five-node workflow in two colored groups, its own six-page wizard, saved variations, fitting/material controls, static GLB, spring-bone VRM and optional motion MP4. Existing generation workflows retain their owners. [HairDeck implementation and limits](HAIR-WORKFLOW.md) records the pinned dependencies, runtime, public model acquisition and output evidence.
+
+- The actual installed wizard generated two variations from the licensed upstream example, reused the second generation for fitting/material changes, and produced a checked 29-file ZIP with GLB, VRM, a three-second motion video, textures, diagnostics, editable source data, provenance, licenses and README. VRM validation recorded 22 spring groups and 23 retained chains. The GUI download matched the recorded SHA-256; the archive's hashes and README inventory passed validation.
+- Seven focused hair tests cover bounded controls, graph/variation identity, source integrity, cancellation/retry, export-only reuse and selected archive contents. Real installed MCP stdio-to-HTTP checks discovered 30 tools, including seven hair tools. The actual native HairDeck entry points imported successfully.
+- Release checks passed: 107 Foundry unit tests, seven portable-release/installer tests and 22 Pinokio tests. These are contract and runtime checks, not a fresh-machine install or qualification of every hairstyle.
+- First-use acquisition used public sources without a token and matched the pinned checksums, including an independent 1.2 GB DINOv3 transfer. Software installation does not download model weights. Hair export's Blender 4.2/VRM tools remain separate from the mesh-finishing Blender installation.
+- After review, all secondary workflow cards measured 180px high with 150×180 images; the hair artwork decoded and displayed. File drag-and-drop uploaded into the hair wizard without changing the selected graph. The Gallery picker loaded saved images. HairDeck is named on the card, wizard, progress and output records.
+- Existing Desktop workflow and saved results were restored across a reboot and a controlled idle restart. No active generation was interrupted. Physical camera capture remains untested without attached hardware. No arbitrary-avatar fitting, strand Groom or rigged FBX is claimed.
+
+---
+
 # Preview 0.1.0-preview.9 validation
 
 Validated on 2026-11-02 in the existing Comfy Desktop workflow. This pass changes feedback and monitoring, not generation settings, geometry, textures or export contents.

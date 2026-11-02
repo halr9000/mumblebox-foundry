@@ -32,6 +32,11 @@ export function showWorkflow(node) {
         if (other) frame([other.pos[0],other.pos[1],1600,1100]);
     }
 }
+export function showHairWorkflow() {
+    if(appMode)presentation.graph();
+    const node=app.graph.getNodeById(70000);
+    if(node)frame([node.pos[0]-60,node.pos[1]-90,2500,1200]);
+}
 export function installReturnControl(node) {
     returnControl?.remove();
     const control = document.createElement("button");

@@ -94,7 +94,7 @@ class Library:
                         and f.get("format", "").lower() in ("png", "jpg", "jpeg", "webp")]
         revision = digest(archive)
         record = {"id": record_id, "kind": "mesh", "name": str(catalog.get("asset_name") or "Asset")[:200],
-                  "created": str(catalog.get("created_utc") or ""), "workflow": "Create a 3D Asset from an Image",
+                  "created": str(catalog.get("created_utc") or ""), "workflow": str(catalog.get('production',{}).get('workflow_title') or "Create a 3D Asset from an Image")[:120],
                   "variants": catalog.get("variants", []), "formats": sorted(set(f.get("format", "") for f in catalog_files)),
                   "warnings": catalog.get("warnings", []), "file_count": len(catalog_files),
                   "bytes": archive.stat().st_size, "archive": str(archive), "folder": str(folder),

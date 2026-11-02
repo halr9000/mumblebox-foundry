@@ -137,7 +137,7 @@ def install_extension(layout,blender,source,port=8378):
     run([sys.executable,source/'scripts'/'install_foundry.py','--comfy',layout.comfy,
          '--user-directory',layout.data/'user','--worker-python',layout.worker_python,
          '--trellis-repo',layout.trellis,'--trellis-models',layout.data/'trellis-models',
-         '--blender',blender,'--hi3d-url',f'http://127.0.0.1:{port}'])
+         '--blender',blender,'--host-python',layout.host_python,'--hi3d-url',f'http://127.0.0.1:{port}'])
 
 
 def install(root,source=None,repair=False):
@@ -170,7 +170,7 @@ def install(root,source=None,repair=False):
     torch_index='https://download.pytorch.org/whl/cu130'
     step('host CUDA packages',[host['torch'],host['torchvision']],lambda:pip(layout.host_python,
          'torch=='+host['torch'],'torchvision=='+host['torchvision'],'--index-url',torch_index))
-    step('ComfyUI packages',requirements.read_text(),lambda:pip(layout.host_python,'-r',requirements,'-r',source/'comfyui_asset_workshop'/'requirements.txt'))
+    step('ComfyUI packages',[requirements.read_text(),(source/'comfyui_asset_workshop'/'requirements.txt').read_text()],lambda:pip(layout.host_python,'-r',requirements,'-r',source/'comfyui_asset_workshop'/'requirements.txt'))
     step('worker CUDA packages',[worker['torch'],worker['torchvision']],lambda:pip(layout.worker_python,
          'torch=='+worker['torch'],'torchvision=='+worker['torchvision'],'--index-url',torch_index))
     worker_requirements=source/'requirements-worker-windows.txt'

@@ -1,4 +1,4 @@
-import {el,button,icon} from "./dom.js";
+import {el,button,icon,hint} from "./dom.js";
 import {activityState,loadedState} from "./activity-state.js";
 import {activity} from "./activity.js";
 import {UpdateChecks} from "./updates.js";
@@ -41,6 +41,12 @@ export class FoundryShell {
             if(typeof id==='string'&&/^[a-f0-9]{32}$/.test(id)){this.openImageId=id;this.openImages('Create Images');}
         };
         api.addEventListener('mumblebox-foundry-image',this.agentImageHandler);
+        this.agentHairHandler=event=>{
+            if(this.node.graph!==app.graph||!this.host.isConnected)return;
+            const id=event.detail?.id;
+            if(typeof id==='string'&&/^[a-f0-9]{32}$/.test(id))this.openHairWizard({runId:id});
+        };
+        api.addEventListener('mumblebox-foundry-hair',this.agentHairHandler);
     }
     build() {
         this.version=el("small",{},"Interface loading");
@@ -160,9 +166,23 @@ export class FoundryShell {
         }catch(error){wizard?.dispose();this.content.replaceChildren(el("p",{role:"alert","data-connection-error":String(error.code==="FOUNDRY_OFFLINE")},error.message));}
     }
 
+    async openHairWizard(options={}) {
+        this.viewDispose?.();this.viewDispose=null;
+        const sequence=this.sequence=(this.sequence||0)+1;
+        this.tab='Choose a Workflow';this.content.replaceChildren(hint('Opening the HairDeck workflow…'));
+        try{
+            const {HairWizard}=await import('./hair/controller.js');const wizard=new HairWizard(this,options);
+            const element=await wizard.init();
+            if(sequence!==this.sequence){wizard.dispose();return;}
+            this.content.replaceChildren(element);this.content.scrollTop=0;this.hairWizard=wizard;
+            this.viewDispose=()=>wizard.dispose();this.content.setAttribute('aria-label','HairDeck creation wizard');
+            [...this.nav.children].forEach((n,i)=>n.setAttribute('aria-selected',String(i===0)));
+        }catch(error){this.content.replaceChildren(el('p',{role:'alert'},error.message));}
+    }
+
     async settings(options={}) {
         try{const module=await import("./views/settings.js");return module.render(this,options);}
         catch(error){this.message(error.message,true);}
     }
-    dispose() {this.stopTextClipboard?.();this.updates.dispose();api.removeEventListener("mumblebox-foundry-run",this.agentRunHandler);api.removeEventListener('mumblebox-foundry-image',this.agentImageHandler);this.stopPolling?.();this.viewDispose?.();this.imageCreator?.dispose();this.activeDialog?.close();this.root.remove();this.sequence++;}
+    dispose() {this.stopTextClipboard?.();this.updates.dispose();api.removeEventListener("mumblebox-foundry-run",this.agentRunHandler);api.removeEventListener('mumblebox-foundry-image',this.agentImageHandler);api.removeEventListener('mumblebox-foundry-hair',this.agentHairHandler);this.stopPolling?.();this.viewDispose?.();this.imageCreator?.dispose();this.activeDialog?.close();this.root.remove();this.sequence++;}
 }

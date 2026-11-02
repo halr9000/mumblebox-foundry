@@ -4,7 +4,7 @@ For an isolated installation managed by Pinokio, use [the Pinokio instructions](
 
 This preview runs locally on Windows with an NVIDIA GPU. It uses three Python environments: the existing ComfyUI host, an isolated texture/finishing worker, and a local Hi3D workbench. Keep their PyTorch installations separate. All example paths below are examples, not required machine paths.
 
-Use a local directory outside OneDrive. Install Git, Python 3.13, Python 3.10, a current NVIDIA driver, and Blender 5.2.2 LTS. The validated system has 16 GB VRAM and 64 GB RAM; lower-memory machines are not yet qualified.
+Use a local directory outside OneDrive. Install Git, [uv](https://docs.astral.sh/uv/getting-started/installation/) (available on PATH), Python 3.13, Python 3.10, a current NVIDIA driver, and Blender 5.2.2 LTS. The validated system has 16 GB VRAM and 64 GB RAM; lower-memory machines are not yet qualified.
 
 ## 1. ComfyUI
 
@@ -44,7 +44,7 @@ foreach ($package in @('cumesh','flex_gemm','nvdiffrast','nvdiffrec_render','o_v
 New-Item -ItemType Directory -Force C:\Tools\foundry-texture-models
 ```
 
-The wrapper source is used by the isolated worker; do not install it as another active ComfyUI custom-node pack. No model weights need to be downloaded at this point. The texture stage obtains its pinned snapshots on first use. The DINOv3 model may require accepted Hugging Face access terms and a token in Foundry Settings.
+The wrapper source is used by the isolated worker; do not install it as another active ComfyUI custom-node pack. No model weights need to be downloaded at this point. The texture stage obtains its pinned snapshots on first use. The default DINOv3 acquisition uses the documented public distribution with checksum verification; it does not depend on Meta's Hugging Face approval queue. Alternate resources can have separate access requirements.
 
 ## 3. Hi3D workbench
 
@@ -78,7 +78,9 @@ py -3.13 C:\Tools\foundry-release\scripts\install_foundry.py `
   --blender 'C:\Program Files\Blender Foundation\Blender 5.2\blender.exe'
 ```
 
-If ComfyUI uses a custom `--user-directory`, pass the same directory to this installer. It copies the node package and writes private paths to `user/asset-workshop.json`. Existing settings and changed installation files are backed up under `user/mumblebox-foundry/install-backups`. It does not remove models, user outputs or other custom nodes.
+If ComfyUI uses a custom `--user-directory`, pass the same directory to this installer. If its interpreter is not at `<core>/.venv/Scripts/python.exe`, also pass `--host-python` with ComfyUI's actual Python executable. The installer copies the node package, installs and probes the pinned HairDeck software in the host, and writes private paths to `user/asset-workshop.json`. Existing settings and changed installation files are backed up under `user/mumblebox-foundry/install-backups`. It does not remove models, user outputs or other custom nodes.
+
+HairDeck weights download when its workflow is first run. Its separate Blender 4.2/VRM export tools download on first use of rigged output or motion; they do not replace Blender 5.2. See [HairDeck workflow and limitations](docs/HAIR-WORKFLOW.md).
 
 Restart ComfyUI, then open:
 

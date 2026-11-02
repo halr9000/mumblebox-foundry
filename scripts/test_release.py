@@ -1,5 +1,6 @@
 """Portable install contract: no downloads, preserved state, repeatability, rollback."""
 import argparse, importlib.util, json, tempfile, unittest
+from unittest.mock import patch
 from pathlib import Path
 spec=importlib.util.spec_from_file_location("installer",Path(__file__).with_name("install_foundry.py"))
 installer=importlib.util.module_from_spec(spec);spec.loader.exec_module(installer)
@@ -27,7 +28,7 @@ class InstallTests(unittest.TestCase):
         self.exe=self.root/"python.exe";self.exe.write_text("fixture")
         self.user=self.core/"user";self.user.mkdir()
         (self.user/"asset-workshop.json").write_text(json.dumps({"theme":"keep","pipeline_runtime":{"stable_materials":"preserve"}}))
-        self.args=argparse.Namespace(comfy=str(self.core),user_directory=None,worker_python=str(self.exe),trellis_repo=str(self.repo),trellis_models=str(self.models),blender=str(self.exe),hi3d_url="http://127.0.0.1:8378")
+        self.args=argparse.Namespace(comfy=str(self.core),user_directory=None,worker_python=str(self.exe),trellis_repo=str(self.repo),trellis_models=str(self.models),blender=str(self.exe),hi3d_url="http://127.0.0.1:8378",skip_hair_software=True)
     def tearDown(self):self.temp.cleanup()
     def test_release_inventory_contains_material_editor(self):
         spec=importlib.util.spec_from_file_location('builder',Path(__file__).with_name('build_release.py'))
@@ -37,7 +38,10 @@ class InstallTests(unittest.TestCase):
         for name in ('pinokio.js', 'pinokio.json', 'install.js', 'start.js', 'update.js',
                      'repair.js', 'icon.png', 'scripts/pinokio/bootstrap.py',
                      'scripts/pinokio/runtime.py', 'scripts/pinokio/maintenance.py',
-                     'scripts/pinokio/connect_agent.py', 'docs/PINOKIO.md'):
+                     'scripts/pinokio/connect_agent.py', 'docs/PINOKIO.md',
+                     'requirements-hair-windows.txt','scripts/install_hairdeck.py',
+                     'scripts/probe_hairdeck.py','docs/HAIR-WORKFLOW.md',
+                     'comfyui_asset_workshop/web/assets/foundry/hair.png'):
             self.assertIn(name,names)
         self.assertNotIn('scripts/pinokio/mcp.py',names)
         self.assertFalse(any(name.startswith(('.pinokio/', 'bench/')) for name in names))
@@ -60,6 +64,12 @@ class InstallTests(unittest.TestCase):
         backups=list((self.user/"mumblebox-foundry/install-backups").glob("*/custom-node/models.py"))
         self.assertEqual(len(backups),1)
         self.assertEqual(backups[0].read_text(),"previous module")
+    def test_default_install_calls_hair_software_with_actual_host(self):
+        self.args.skip_hair_software=False
+        self.args.host_python=str(self.exe)
+        with patch('install_hairdeck.install') as hair:
+            installer.install(self.args)
+        hair.assert_called_once_with(self.core.resolve(),self.exe.resolve(),installer.ROOT)
     def test_remote_service_rejected_before_writes(self):
         self.args.hi3d_url="http://example.com"
         with self.assertRaises(ValueError):installer.install(self.args)

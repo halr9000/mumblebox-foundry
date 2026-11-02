@@ -1,8 +1,8 @@
 {
   "id": "6c419aea-6f6c-4151-a885-b0973634c9a1",
   "revision": 0,
-  "last_node_id": 3012,
-  "last_link_id": 142,
+  "last_node_id": 70004,
+  "last_link_id": 270,
   "nodes": [
     {
       "id": 3,
@@ -7575,6 +7575,422 @@
       "properties": {},
       "color": "#3d7257",
       "bgcolor": "#1f2d26"
+    },
+    {
+      "id": 70001,
+      "type": "HairDeckLoader",
+      "pos": [
+        -4500,
+        4450
+      ],
+      "size": [
+        289.7671875,
+        202
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "发片生成模型",
+          "name": "image_model",
+          "type": "COMBO",
+          "widget": {
+            "name": "image_model"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "发片 VAE",
+          "name": "card_vae",
+          "type": "COMBO",
+          "widget": {
+            "name": "card_vae"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "弹簧骨骼模型",
+          "name": "chain_model",
+          "type": "COMBO",
+          "widget": {
+            "name": "chain_model"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "SAM 3 分割模型",
+          "name": "sam3",
+          "type": "COMBO",
+          "widget": {
+            "name": "sam3"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "DINOv3 图像编码器",
+          "name": "dinov3",
+          "type": "COMBO",
+          "widget": {
+            "name": "dinov3"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "BiRefNet 抠图模型",
+          "name": "birefnet",
+          "type": "COMBO",
+          "widget": {
+            "name": "birefnet"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "配套资源目录",
+          "name": "resources",
+          "type": "COMBO",
+          "widget": {
+            "name": "resources"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "模型",
+          "name": "模型",
+          "type": "HAIRDECK_MODEL",
+          "links": [
+            265
+          ]
+        }
+      ],
+      "title": "HAIR — Pinned HairDeck checkpoints",
+      "properties": {
+        "Node name for S&R": "HairDeckLoader"
+      },
+      "widgets_values": [
+        "model.safetensors",
+        "model.safetensors",
+        "model.safetensors",
+        "sam3.pt",
+        "model.safetensors",
+        "model.safetensors",
+        "hairdeck"
+      ],
+      "widgets_values_named": {
+        "image_model": "model.safetensors",
+        "card_vae": "model.safetensors",
+        "chain_model": "model.safetensors",
+        "sam3": "sam3.pt",
+        "dinov3": "model.safetensors",
+        "birefnet": "model.safetensors",
+        "resources": "hairdeck"
+      }
+    },
+    {
+      "id": 70002,
+      "type": "HairDeckGenerate",
+      "pos": [
+        -4050,
+        4050
+      ],
+      "size": [
+        320.050390625,
+        242
+      ],
+      "flags": {},
+      "order": 32,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "模型",
+          "name": "model",
+          "type": "HAIRDECK_MODEL",
+          "link": 265
+        },
+        {
+          "localized_name": "外部图像",
+          "name": "external_image",
+          "shape": 7,
+          "type": "IMAGE",
+          "link": 269
+        },
+        {
+          "localized_name": "透明区域蒙版",
+          "name": "transparent_mask",
+          "shape": 7,
+          "type": "MASK",
+          "link": 270
+        },
+        {
+          "localized_name": "角色图片",
+          "name": "image",
+          "type": "COMBO",
+          "widget": {
+            "name": "image"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "随机种子",
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "采样步数",
+          "name": "steps",
+          "type": "INT",
+          "widget": {
+            "name": "steps"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "引导强度",
+          "name": "cfg",
+          "type": "FLOAT",
+          "widget": {
+            "name": "cfg"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "生成弹簧骨骼",
+          "name": "generate_bones",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "generate_bones"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "角色图片",
+          "name": "upload",
+          "type": "IMAGEUPLOAD",
+          "widget": {
+            "name": "upload"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "生成结果",
+          "name": "生成结果",
+          "type": "HAIRDECK_RESULT",
+          "links": [
+            268
+          ]
+        }
+      ],
+      "title": "HAIR — Cards and matching spring chains",
+      "properties": {
+        "Node name for S&R": "HairDeckGenerate"
+      },
+      "widgets_values": [
+        "",
+        0,
+        "fixed",
+        50,
+        2,
+        true,
+        "image"
+      ],
+      "widgets_values_named": {
+        "image": "",
+        "seed": 1,
+        "control_after_generate": "fixed",
+        "steps": 50,
+        "cfg": 2,
+        "generate_bones": true,
+        "upload": "image"
+      }
+    },
+    {
+      "id": 70003,
+      "type": "FoundryHairCheckpoint",
+      "pos": [
+        -3550,
+        4050
+      ],
+      "size": [
+        304.5669921875,
+        82
+      ],
+      "flags": {},
+      "order": 37,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "result",
+          "name": "result",
+          "type": "HAIRDECK_RESULT",
+          "link": 268
+        },
+        {
+          "localized_name": "creation_id",
+          "name": "creation_id",
+          "type": "STRING",
+          "widget": {
+            "name": "creation_id"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "variant",
+          "name": "variant",
+          "type": "INT",
+          "widget": {
+            "name": "variant"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "STRING",
+          "name": "STRING",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "HAIR — Preserve generation and review",
+      "properties": {
+        "Node name for S&R": "FoundryHairCheckpoint"
+      },
+      "widgets_values": [
+        "00000000000000000000000000000000",
+        0
+      ],
+      "widgets_values_named": {
+        "creation_id": "f3e372177ab4425d90f321384ea42ab5",
+        "variant": 1
+      }
+    },
+    {
+      "id": 70004,
+      "type": "FoundryHairExport",
+      "pos": [
+        -2850,
+        4050
+      ],
+      "size": [
+        318.9634765625,
+        82
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "checkpoint",
+          "name": "checkpoint",
+          "type": "STRING",
+          "widget": {
+            "name": "checkpoint"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "options",
+          "name": "options",
+          "type": "STRING",
+          "widget": {
+            "name": "options"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "STRING",
+          "name": "STRING",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "title": "HAIR — Materials, rigged VRM and motion",
+      "properties": {
+        "Node name for S&R": "FoundryHairExport"
+      },
+      "widgets_values": [
+        "",
+        "{\"image\": \"\", \"name\": \"Stylized hair\"}"
+      ],
+      "widgets_values_named": {
+        "checkpoint": "foundry-hair/f3e372177ab4425d90f321384ea42ab5/variant-1-caee0c8f/checkpoint.json",
+        "options": "{\"name\": \"HairDeck — complete workflow review\", \"image\": \"foundry-references/hair-reference.png\", \"seed\": 0, \"variations\": 2, \"bones\": true, \"steps\": 50, \"cfg\": 2.0, \"color\": \"#8A4F29\", \"show_head\": true, \"head_profile\": \"upstream\", \"scale\": 1.03, \"offset\": [0.0, 0.0, 0.003], \"uv_mode\": \"unique\", \"texture_size\": \"1K\", \"material\": \"volume\", \"glb\": true, \"vrm\": true, \"motion\": true, \"diagnostics\": true, \"source_data\": true, \"zip\": true, \"checkpoints\": {\"image_model\": \"model.safetensors\", \"card_vae\": \"model.safetensors\", \"chain_model\": \"model.safetensors\", \"sam3\": \"sam3.pt\", \"dinov3\": \"model.safetensors\", \"birefnet\": \"model.safetensors\"}}"
+      }
+    },
+    {
+      "id": 70000,
+      "type": "FoundryLoadCreationImage",
+      "pos": [
+        -4500,
+        4000
+      ],
+      "size": [
+        284.128515625,
+        102
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "localized_name": "filename",
+          "name": "filename",
+          "type": "STRING",
+          "widget": {
+            "name": "filename"
+          },
+          "link": null
+        },
+        {
+          "localized_name": "sha256",
+          "name": "sha256",
+          "type": "STRING",
+          "widget": {
+            "name": "sha256"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "localized_name": "IMAGE",
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            269
+          ]
+        },
+        {
+          "localized_name": "MASK",
+          "name": "MASK",
+          "type": "MASK",
+          "links": [
+            270
+          ]
+        }
+      ],
+      "title": "HAIR — Approved image with verified source hash",
+      "properties": {
+        "Node name for S&R": "FoundryLoadCreationImage"
+      },
+      "widgets_values": [
+        "",
+        ""
+      ],
+      "widgets_values_named": {
+        "filename": "foundry-references/hair-reference.png",
+        "sha256": "4a64ca95ac241743779103774153fd3d1b8f150f5e318e1478c32b6fe8a44c58"
+      }
     }
   ],
   "links": [
@@ -8673,6 +9089,38 @@
       1574,
       4,
       "VAE"
+    ],
+    [
+      265,
+      70001,
+      0,
+      70002,
+      0,
+      "HAIRDECK_MODEL"
+    ],
+    [
+      268,
+      70002,
+      0,
+      70003,
+      0,
+      "HAIRDECK_RESULT"
+    ],
+    [
+      269,
+      70000,
+      0,
+      70002,
+      1,
+      "IMAGE"
+    ],
+    [
+      270,
+      70000,
+      1,
+      70002,
+      2,
+      "MASK"
     ]
   ],
   "groups": [
@@ -8915,6 +9363,30 @@
       ],
       "color": "#3d7257",
       "flags": {}
+    },
+    {
+      "id": 43,
+      "title": "HAIR / 01 — Independent HairDeck generation and saved review",
+      "bounding": [
+        -4550,
+        3920,
+        1600,
+        1120
+      ],
+      "color": "#576f75",
+      "flags": {}
+    },
+    {
+      "id": 44,
+      "title": "HAIR / 02 — Fitting, materials and independent exports",
+      "bounding": [
+        -2900,
+        3920,
+        900,
+        800
+      ],
+      "color": "#775b79",
+      "flags": {}
     }
   ],
   "config": {},
@@ -8931,7 +9403,19 @@
       "interface_node_id": "3012",
       "workflow_id": "image-to-3d/v1",
       "reference_node_id": 900,
-      "landing_view": "gui"
+      "landing_view": "gui",
+      "hair_workflow": {
+        "id": "hair-creation/v1",
+        "generation_ids": [
+          70000,
+          70001,
+          70002,
+          70003
+        ],
+        "export_ids": [
+          70004
+        ]
+      }
     }
   },
   "version": 0.4

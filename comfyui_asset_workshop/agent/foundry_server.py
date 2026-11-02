@@ -28,7 +28,8 @@ def create_server(client):
         "The backend continues if this client disconnects. show_run updates the existing Foundry UI without OS focus. "
         "For initial images use foundry_image_capabilities, create, then start generate. Asset categories produce a front/back pair; general/background produce one image. "
         "Review edits before accepting. Save accepted images; handoff copies a pair and its provenance into 3D inputs. Gallery removal is separate from explicit file deletion. "
-        "Inspect previews and package metadata; do not claim animation/print suitability solely from file format."))
+        "For hair use foundry_hair_capabilities/create/start/status. HairDeck is a separate hair-card workflow: generate, preview, motion_preview and export. "
+        "Static GLB is not rigged; VRM includes skinning and spring data. Inspect previews and package metadata; do not claim animation/print suitability solely from file format."))
 
     @server.tool(structured_output=True)
     @checked
@@ -88,6 +89,8 @@ def create_server(client):
 
     from image_tools import register as register_images
     register_images(server,client,checked)
+    from hair_tools import register as register_hair
+    register_hair(server,client,checked)
     return server
 
 def main():

@@ -2,6 +2,10 @@
 
 The companion MCP uses the same local HTTP services as the wizard. It does not load GPU models, implement another workflow engine, or require an agent to manipulate individual graph nodes.
 
+## HairDeck workflow
+
+Use `foundry_hair_capabilities` before configuring hair. Import an authorized local image with `foundry_import_reference`, then pass its `filename` as the hair configuration's `image`. `foundry_hair_create` saves options without downloading or generating. Start `generate`, inspect saved variations with `foundry_hair_status`, and select a variation for `preview`, `motion_preview` or `export` with `foundry_hair_start`. The material and export operations reuse saved card/chain data. Reuse a request ID only for retries of the same operation. Cancel/show tools use the same owner and existing visible Foundry wizard. Static GLB is unrigged; VRM 0.x contains skinning and spring groups. The motion output is a video preview, not an animation clip.
+
 ## Install
 
 **Pinokio installation:** Start Foundry, then copy the `mumblebox-foundry` entry from `<Pinokio home>/api/mumblebox-foundry/.pinokio/mcp.json` into your agent's MCP configuration. The launcher installs the SDK and generates this entry with the actual local paths. Its `connect_agent.py` wrapper reads the current runtime address on each connection, so ports are not hard-coded. It permits local reference imports only from this installation's `.pinokio/data/input` folder. Add additional explicit input roots only when authorized. Keep Foundry open inside Pinokio so generated work is available for review.

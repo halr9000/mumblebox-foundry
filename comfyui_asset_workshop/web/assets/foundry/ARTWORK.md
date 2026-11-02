@@ -13,6 +13,8 @@ Shared direction: square, professional sculptural 3D product render; charcoal st
 
 ## Approved logo
 
+`hair.png`: generated specifically for the HairDeck workflow card on 2026-11-02. A copper stylized hairstyle on an ivory head with a restrained hair-card/bone cutaway. Generated with the built-in image-generation tool; no third-party artwork copied. This is interface artwork, not an example of inference output.
+
 `logo-approved.png` is the active logo for both light and dark themes. The approved spaced composition was selected on 2026-11-01: silver MUMBLEBOX wordmark, 3D ASSET FOUNDRY subtitle, flat rainbow chaos star on a plain black rounded badge, and clear separation between badge and lettering. Generated and edited with the built-in image-generation tool using the supplied star as reference. Alpha transparency is retained. The application loads the same asset for both themes. Earlier PNG/SVG variants are retained for rollback and are not active UI assets.
 
 Final prompt direction: preserve the approved silver lettering; provide a deliberate badge-to-wordmark gap and subtitle spacing; align the badge against the whole text block; keep the star and black rounded square flat and effect-free. Exact text: MUMBLEBOX / 3D ASSET FOUNDRY.

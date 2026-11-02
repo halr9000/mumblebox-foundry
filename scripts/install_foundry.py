@@ -42,6 +42,11 @@ def install(args):
     config.parent.mkdir(parents=True,exist_ok=True);pending=config.with_suffix(".json.tmp")
     pending.write_text(json.dumps(existing,indent=2),encoding="utf-8");pending.replace(config)
     (backup/"changed-files.json").write_text(json.dumps(changed,indent=2),encoding="utf-8")
+    if not getattr(args,'skip_hair_software',False):
+        from install_hairdeck import install as install_hair
+        host=Path(args.host_python).resolve() if getattr(args,'host_python',None) else core/'.venv/Scripts/python.exe'
+        if not host.is_file():raise ValueError('Supply --host-python for this ComfyUI installation.')
+        install_hair(core,host,ROOT)
     print(f"Installed {len(changed)} files. Previous files/config: {backup}")
     print("Restart ComfyUI. Open custom_nodes/comfyui_asset_workshop/workflows/Mumblebox 3D Asset Foundry.json")
 
@@ -51,4 +56,6 @@ if __name__=="__main__":
     parser.add_argument("--user-directory",help="Only for a custom ComfyUI --user-directory")
     for key in ("worker-python","trellis-repo","trellis-models","blender"):parser.add_argument("--"+key,required=True)
     parser.add_argument("--hi3d-url",default="http://127.0.0.1:8378")
+    parser.add_argument('--host-python',help='The ComfyUI host interpreter (required when it has no local .venv).')
+    parser.add_argument('--skip-hair-software',action='store_true',help=argparse.SUPPRESS)
     install(parser.parse_args())

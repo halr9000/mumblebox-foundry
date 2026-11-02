@@ -473,6 +473,140 @@
       "license": "Hi3D Open License Agreement Version 1.0",
       "license_url": "https://github.com/hi3d-official/Hi3Dv1.0/blob/23dcc684bc6e1fab86ecafb99ec5270edad122f9/LICENSE",
       "notice": "Powered by Hi3D 1.0 - http://hi3d.ai/"
+    },
+    {
+      "id": "hairdeck",
+      "model": "hyz317/HairDeck",
+      "revision": "129ad77fba42edfb79a59246f43b11d3fc64c6d1",
+      "source": "https://github.com/hyz317/HairDeck",
+      "wrapper": "https://github.com/FengLairh/ComfyUI-HairDeck",
+      "wrapper_revision": "ad27f3433169ca6e1f61396525d30d6ca55428be",
+      "isolation": "Native ComfyUI host with pinned requirements-hair-windows.txt; weights and VRM tools on first workflow use only",
+      "files": [
+        {
+          "path": "ckpt/image_model/model.safetensors",
+          "role": "native image workflow",
+          "bytes": 729268136,
+          "sha256": "7348fa7f1595a4560e836ae0db7fe2a14d2abfe7730db5665f9c976f942997be",
+          "source": "https://huggingface.co/hyz317/HairDeck/resolve/129ad77fba42edfb79a59246f43b11d3fc64c6d1/ckpt/image_model/model.safetensors",
+          "license": "Apache-2.0 per HairDeck release; retain avatar metadata",
+          "acquisition": "public model repository"
+        },
+        {
+          "path": "ckpt/card_vae/model.safetensors",
+          "role": "native image workflow",
+          "bytes": 32284540,
+          "sha256": "c19a8149ca07ea0710729475543cdc21f2bc35fbac684b21adb23671cd2c6fd8",
+          "source": "https://huggingface.co/hyz317/HairDeck/resolve/129ad77fba42edfb79a59246f43b11d3fc64c6d1/ckpt/card_vae/model.safetensors",
+          "license": "Apache-2.0 per HairDeck release; retain avatar metadata",
+          "acquisition": "public model repository"
+        },
+        {
+          "path": "ckpt/chain_model/model.safetensors",
+          "role": "native image workflow",
+          "bytes": 122107892,
+          "sha256": "4d2b44ea9c9b81fb5c9973e050ffecd32b5dc13a7e47c5ca6ecf903cd83d31bf",
+          "source": "https://huggingface.co/hyz317/HairDeck/resolve/129ad77fba42edfb79a59246f43b11d3fc64c6d1/ckpt/chain_model/model.safetensors",
+          "license": "Apache-2.0 per HairDeck release; retain avatar metadata",
+          "acquisition": "public model repository"
+        },
+        {
+          "path": "ckpt/card_vae/stats.json",
+          "role": "native image workflow",
+          "bytes": 181,
+          "sha256": "a59083fbeff3151e9bbb24b029f0e520e59226adc0861706922893162dc6bd28",
+          "source": "https://huggingface.co/hyz317/HairDeck/resolve/129ad77fba42edfb79a59246f43b11d3fc64c6d1/ckpt/card_vae/stats.json",
+          "license": "Apache-2.0 per HairDeck release; retain avatar metadata",
+          "acquisition": "public model repository"
+        },
+        {
+          "path": "ckpt/card_vae/latent_stats_head.json",
+          "role": "native image workflow",
+          "bytes": 1330,
+          "sha256": "85a8470491342675c5fd2b026d060efb8c2fa1cc67a0ee2a158d5244d92f0263",
+          "source": "https://huggingface.co/hyz317/HairDeck/resolve/129ad77fba42edfb79a59246f43b11d3fc64c6d1/ckpt/card_vae/latent_stats_head.json",
+          "license": "Apache-2.0 per HairDeck release; retain avatar metadata",
+          "acquisition": "public model repository"
+        },
+        {
+          "path": "data/token_stats_head.json",
+          "role": "native image workflow",
+          "bytes": 366,
+          "sha256": "c7a1babaac873afd989f25c0f2b8b2d178499df31a4b70653973be3aaab070e2",
+          "source": "https://huggingface.co/hyz317/HairDeck/resolve/129ad77fba42edfb79a59246f43b11d3fc64c6d1/data/token_stats_head.json",
+          "license": "Apache-2.0 per HairDeck release; retain avatar metadata",
+          "acquisition": "public model repository"
+        },
+        {
+          "path": "data/head_frame_train.npz",
+          "role": "native image workflow",
+          "bytes": 620712,
+          "sha256": "c5ba440bfa91c3c28ad1f1c9971d4d0826c28ff34b54279c9a28ed622a36de23",
+          "source": "https://huggingface.co/hyz317/HairDeck/resolve/129ad77fba42edfb79a59246f43b11d3fc64c6d1/data/head_frame_train.npz",
+          "license": "Apache-2.0 per HairDeck release; retain avatar metadata",
+          "acquisition": "public model repository"
+        },
+        {
+          "path": "data/spring/chain_stats_head.json",
+          "role": "native image workflow",
+          "bytes": 1176,
+          "sha256": "059b051ef2f3e9dd8980f95f08c3c7d067c05fcf3e705b2294beb77171f5b70b",
+          "source": "https://huggingface.co/hyz317/HairDeck/resolve/129ad77fba42edfb79a59246f43b11d3fc64c6d1/data/spring/chain_stats_head.json",
+          "license": "Apache-2.0 per HairDeck release; retain avatar metadata",
+          "acquisition": "public model repository"
+        },
+        {
+          "path": "data/avatar/body.json",
+          "role": "VRM example/profile",
+          "bytes": 1198,
+          "sha256": "1a5ca0464d5964d85c06d89bde93bee74eb8a9cde167aee3db90b12e1b66054c",
+          "source": "https://huggingface.co/hyz317/HairDeck/resolve/129ad77fba42edfb79a59246f43b11d3fc64c6d1/data/avatar/body.json",
+          "license": "Apache-2.0 per HairDeck release; retain avatar metadata",
+          "acquisition": "public model repository"
+        },
+        {
+          "path": "data/avatar/avatar.vrm",
+          "role": "VRM example/profile",
+          "bytes": 13355440,
+          "sha256": "458ad23b573140331317f25a27e83496cce06d8c5cc4efd2ec23474b5a845b8d",
+          "source": "https://huggingface.co/hyz317/HairDeck/resolve/129ad77fba42edfb79a59246f43b11d3fc64c6d1/data/avatar/avatar.vrm",
+          "license": "Apache-2.0 per HairDeck release; retain avatar metadata",
+          "acquisition": "public model repository"
+        },
+        {
+          "path": "data/avatar/hair.glb",
+          "role": "VRM example/profile",
+          "bytes": 519944,
+          "sha256": "72a5f25f5300c909eb072d1fddbc340922d3625d5b62823bf092237feeda18d5",
+          "source": "https://huggingface.co/hyz317/HairDeck/resolve/129ad77fba42edfb79a59246f43b11d3fc64c6d1/data/avatar/hair.glb",
+          "license": "Apache-2.0 per HairDeck release; retain avatar metadata",
+          "acquisition": "public model repository"
+        },
+        {
+          "path": "third_party/weights/sam3/sam3.pt",
+          "bytes": 3450062241,
+          "sha256": "9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e",
+          "source": "https://modelscope.cn/api/v1/models/facebook/sam3/repo?Revision=f8ee5d16d5c30d0e87b1d22cbd358ce97761df56&FilePath=sam3.pt",
+          "license": "SAM License",
+          "acquisition": "official HairDeck documented ModelScope option; anonymous HEAD 200"
+        },
+        {
+          "path": "third_party/weights/dinov3/model.safetensors",
+          "bytes": 1212559808,
+          "sha256": "dcb2e45127cccbf1601e5f42fef165eea275c8e5213197e8dcf3f48822718179",
+          "source": "https://modelscope.cn/api/v1/models/facebook/dinov3-vitl16-pretrain-lvd1689m/repo?Revision=bab39f7f4023c45534a5326e9378edc5b2016e48&FilePath=model.safetensors",
+          "license": "DINOv3 License",
+          "acquisition": "official HairDeck documented ModelScope option; anonymous HEAD 200"
+        },
+        {
+          "path": "third_party/weights/birefnet_matting/model.safetensors",
+          "bytes": 884878856,
+          "sha256": "a9875de5b1e6c8eb5fdaa8c727a82927ce442cdc87ba3abee6a77e6fa46c25bb",
+          "source": "https://huggingface.co/ZhengPeng7/BiRefNet-matting/resolve/eccde0a8cbdce7ac5fecfeb06340fe7b949e85d9/model.safetensors",
+          "license": "MIT",
+          "acquisition": "public repository; anonymous HEAD 200"
+        }
+      ]
     }
   ],
   "worker_models": {

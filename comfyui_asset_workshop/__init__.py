@@ -32,3 +32,5 @@ NODE_CLASS_MAPPINGS={node.GET_SCHEMA().node_id:node for node in _NATIVE_NODES}
 NODE_CLASS_MAPPINGS.update(FINISHING_NODES)
 from .foundry.workflows.image_creation.nodes import NODE_CLASS_MAPPINGS as IMAGE_CREATION_NODES
 NODE_CLASS_MAPPINGS.update(IMAGE_CREATION_NODES)
+from .foundry.workflows.hair_creation.nodes import NODE_CLASS_MAPPINGS as HAIR_CREATION_NODES
+NODE_CLASS_MAPPINGS.update(HAIR_CREATION_NODES)

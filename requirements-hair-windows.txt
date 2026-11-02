@@ -1,0 +1,21 @@
+# HairDeck host additions qualified with Python 3.13 / Torch 2.12.1+cu130.
+# Do not install a second Torch or import dependencies from an external venv.
+timm==1.0.30
+iopath==0.1.10
+ftfy==6.3.1
+pycocotools==2.0.11
+omegaconf==2.4.0
+torchmetrics==1.9.0
+submitit==1.5.4
+triton-windows==3.9.0.post30; platform_system == "Windows"
+freetype-py==2.5.1
+pyglet==2.1.19
+lightning-utilities==0.15.3
+portalocker==4.4.2
+# Imports inherited from the upstream pack, explicitly owned by this host.
+einops>=0.8
+kornia>=0.8
+scipy>=1.11
+PyOpenGL>=3.1.7
+imageio-ffmpeg>=0.5
+requests>=2.31

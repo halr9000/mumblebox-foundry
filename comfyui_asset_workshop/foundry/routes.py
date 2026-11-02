@@ -16,7 +16,7 @@ from .receipts import sync
 
 PREFIX = "/mumblebox-foundry/v1"
 
-def register(routes, library, preferences, wizard_factory=None, resources=None, updates=None, image_factory=None, image_notify=None):
+def register(routes, library, preferences, wizard_factory=None, resources=None, updates=None, image_factory=None, image_notify=None, hair_factory=None, hair_notify=None):
     def endpoint(function):
         async def wrapped(request):
             origin = request.headers.get("Origin")
@@ -37,6 +37,9 @@ def register(routes, library, preferences, wizard_factory=None, resources=None, 
     if image_factory:
         from .workflows.image_creation.routes import register as image_routes
         image_routes(routes,image_factory,endpoint,image_notify or (lambda ident:None))
+    if hair_factory:
+        from .workflows.hair_creation.routes import register as hair_routes
+        hair_routes(routes,hair_factory,endpoint,hair_notify or (lambda ident:None))
 
     async def body(request):
         raw = await request.content.read(16385)
@@ -278,13 +281,14 @@ def install():
             from ..finishing.package_catalog import VARIANTS,parse_selection
             runs.ACTIVE=runs.WizardRuns(state/"wizard-runs",folder_paths.get_input_directory(),
                 folder_paths.get_output_directory(),NativeQueue(PromptServer.instance.prompt_queue),
-                resources,lambda:has_active_jobs() or image_busy(),parse_selection,VARIANTS)
+                resources,lambda:has_active_jobs() or image_busy() or hair_busy(),parse_selection,VARIANTS)
             runs.ACTIVE.library=library
             from .workflows.image_creation.lineage import resolve_handoff
             runs.ACTIVE.image_source_resolver=lambda source,refs:resolve_handoff(state/'image-creation',source,refs)
         return runs.ACTIVE
     from .workflows.image_to_3d.runs import busy
     from .workflows.image_creation.runs import busy as image_busy
+    from .workflows.hair_creation.runs import busy as hair_busy
     def image_factory():
         from .workflows.image_creation import runs
         if runs.ACTIVE is None:
@@ -293,9 +297,18 @@ def install():
             from ..routes import resources
             runs.ACTIVE=runs.ImageRuns(ImageLibrary(state/'image-creation',folder_paths.get_output_directory()),
                 folder_paths.get_input_directory(),NativeQueue(PromptServer.instance.prompt_queue),
-                resources,lambda:has_active_jobs() or busy())
+                resources,lambda:has_active_jobs() or busy() or hair_busy())
         return runs.ACTIVE
-    library.busy=lambda:PromptServer.instance.prompt_queue.get_tasks_remaining()>0 or busy() or image_busy()
+    def hair_factory():
+        from .workflows.hair_creation import runs
+        if runs.ACTIVE is None:
+            from ..single_image_routes import NativeQueue,has_active_jobs
+            from ..routes import resources
+            runs.ACTIVE=runs.HairRuns(state/'hair-runs',folder_paths.get_input_directory(),
+                folder_paths.get_output_directory(),NativeQueue(PromptServer.instance.prompt_queue),
+                resources,lambda:has_active_jobs() or busy() or image_busy(),library)
+        return runs.ACTIVE
+    library.busy=lambda:PromptServer.instance.prompt_queue.get_tasks_remaining()>0 or busy() or image_busy() or hair_busy()
     from .resources import ResourceInventory
     from .. import models,description_helper
     import comfy.model_management as memory
@@ -310,4 +323,5 @@ def install():
     preferences = Preferences(state/"preferences.json")
     updates = ReleaseUpdates(state/"updates.json", preferences)
     register(PromptServer.instance.routes, library, preferences, wizard_factory, resource_inventory, updates,
-             image_factory,lambda ident:PromptServer.instance.send_sync('mumblebox-foundry-image',{'id':ident}))
+             image_factory,lambda ident:PromptServer.instance.send_sync('mumblebox-foundry-image',{'id':ident}),
+             hair_factory,lambda ident:PromptServer.instance.send_sync('mumblebox-foundry-hair',{'id':ident}))

@@ -1,8 +1,14 @@
 # Mumblebox 3D Asset Foundry
 
+### Create Rigged Hair with HairDeck
+
+HairDeck has its own grouped workflow and six-page wizard: supply a clear hairstyle image, generate sequential variations, inspect hair and predicted chains, adjust head alignment and materials, then export static GLB or a skinned VRM 0.x avatar. Optional outputs include a head-turn MP4, preprocessing images and editable card/chain data. Results use the shared History and catalog-driven README/ZIP services. These are stylized hair cards, not strand Groom or a complete character rigger.
+
+Hair software is installed with Foundry. Approximately 6.4 GB of model weights and selected VRM export tools are prepared on the workflow's first use. They are not downloaded simply by installing or opening Foundry. The Foundry MCP includes `foundry_hair_*` tools that use the same run owner and saved checkpoints as the visible wizard.
+
 A local ComfyUI interface for turning reference images into textured 3D assets. A guided workflow connects four-view image generation, Pixal3D/TRELLIS.2 geometry, Hi3D refinement, measured cleanup, texturing and selected exports.
 
-**Preview 0.1.0-preview.6 — Windows / NVIDIA beta.** Install through [Pinokio](docs/PINOKIO.md) for automated software setup, or use the [manual installation](INSTALL.md). Pinokio opens the Foundry interface directly. Original Foundry code is Apache-2.0; models and third-party tools retain their own terms. Read [third-party notices](THIRD-PARTY.md), particularly before commercial use.
+**Preview 0.1.0-preview.10 — Windows / NVIDIA beta.** Install through [Pinokio](docs/PINOKIO.md) for automated software setup, or use the [manual installation](INSTALL.md). Pinokio opens the Foundry interface directly. Original Foundry code is Apache-2.0; models and third-party tools retain their own terms. Read [third-party notices](THIRD-PARTY.md), particularly before commercial use.
 
 ## Included
 

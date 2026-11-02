@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-preview.10
+
+- Add **Create Rigged Hair with HairDeck**, a separately grouped workflow with its own artwork and six-page wizard. Existing image and image-to-3D workflows stay independent.
+- Add sequential variations, saved matching card/chain checkpoints, rotatable review and chain-overlay previews, preprocessing diagnostics, head selection, uniform fitting, color/material/UV/texture controls, static GLB, skinned VRM 0.x and optional head-turn MP4.
+- Reuse the shared queue, lifecycle, History and catalog-driven README/ZIP services. Record actual model hashes, selected settings and resource notices; preserve hair-card topology.
+- Add `foundry_hair_*` MCP tools, pinned host dependencies, real upstream import probes and first-use model/export-tool acquisition. Keep Blender 4.2/VRM tools separate from the existing finishing stack. Installation does not download model weights.
+- Keep HairDeck and image creation in the same compact card layout as the other secondary workflows. Restore the hair artwork, protect file drops from graph interception, and credit HairDeck explicitly in the card, wizard, progress and output records.
+- No strand Groom, automatic complete-character fitting or rigged FBX is claimed by this workflow.
+
 ## 0.1.0-preview.9
 
 - Add selected-stage overall completion in the wizard, including texture, selected game bakes, quads, print preparation, package/ZIP and final cleanup. Node sampling resets no longer reset overall completion; percentages measure completed work stages, not predicted time.

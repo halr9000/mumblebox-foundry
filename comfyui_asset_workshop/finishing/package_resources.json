@@ -353,5 +353,49 @@
     "license": "Apache 2.0",
     "license_url": "https://github.com/black-forest-labs/flux2#flux2-autoencoder",
     "license_summary": "BFL releases the autoencoder under Apache 2.0 separately from the image generation weights."
+  },
+  "hairdeck": {
+    "id": "hairdeck",
+    "name": "HairDeck",
+    "stage": "Hair cards and matching spring chains",
+    "version": "5f1c18a32e622cb8d1acec2a856694fb43375c1a",
+    "source": "https://github.com/hyz317/HairDeck",
+    "license": "Apache-2.0",
+    "license_url": "https://github.com/hyz317/HairDeck/blob/main/LICENSE",
+    "license_summary": "Retain attribution and notices. Stylized hair cards, not strand Groom.",
+    "notices": []
+  },
+  "hairdeck_wrapper": {
+    "id": "hairdeck_wrapper",
+    "name": "ComfyUI-HairDeck",
+    "stage": "Native hair integration",
+    "version": "ad27f3433169ca6e1f61396525d30d6ca55428be",
+    "source": "https://github.com/FengLairh/ComfyUI-HairDeck",
+    "license": "Apache-2.0",
+    "license_url": "https://github.com/FengLairh/ComfyUI-HairDeck/blob/main/LICENSE",
+    "license_summary": "Community integration with separate resource terms.",
+    "notices": []
+  },
+  "sam3": {
+    "id": "sam3",
+    "name": "SAM 3",
+    "stage": "Hair and face segmentation",
+    "version": "0570b3a5be9c4e694f23d85232fb55f4a6f1f7fc",
+    "source": "https://github.com/facebookresearch/sam3",
+    "license": "SAM License",
+    "license_url": "https://github.com/facebookresearch/sam3/blob/main/LICENSE",
+    "license_summary": "See the retained Meta license terms.",
+    "notices": []
+  },
+  "hairdeck_vrm": {
+    "id": "hairdeck_vrm",
+    "name": "Blender / VRM Add-on",
+    "stage": "Rigged hair export",
+    "version": "4.2.23 / 4.10.2",
+    "source": "https://github.com/saturday06/VRM-Addon-for-Blender",
+    "license": "GPL / MIT",
+    "license_url": "https://github.com/saturday06/VRM-Addon-for-Blender/blob/main/LICENSE",
+    "license_summary": "Separate export-tool licenses. Software binaries are not included in the asset package.",
+    "notices": []
   }
 }
