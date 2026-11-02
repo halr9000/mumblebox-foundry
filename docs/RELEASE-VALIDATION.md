@@ -20,7 +20,7 @@ The Pinokio Ranger test used saved checkpoints to resume the failed workflow rat
 - The optional authoring version contained 24,399 quads and eight small triangular caps, with no n-gons. Its triangulated export had 48,806 triangles and was watertight. All 17 disconnected components were retained. A deterministic 10,000-point comparison measured mean/p95 surface deviation of 0.000156/0.000538 of the source bounding-box diagonal; this does not establish animation-ready edge flow.
 - Quad corrections preserve the detailed master. They resolve triangulation conflicts and bounded small boundary loops; they do not merge all components or globally weld the source. Temporary NumPy mesh archives are closed before Windows scratch cleanup.
 
-The final package review is recorded when the interrupted packaging stage has resumed. These measurements describe this asset, not a guarantee for arbitrary generated subjects. Category generation and physical webcam checks remain user testing.
+The saved test asset's final packaging retry and archive review were deferred by user instruction; they are not claimed as preview.6 validation. These measurements describe this asset, not a guarantee for arbitrary generated subjects. Category generation and physical webcam checks remain user testing.
 
 ## Release boundary
 
