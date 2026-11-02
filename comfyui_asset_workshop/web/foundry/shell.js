@@ -15,7 +15,7 @@ export class FoundryShell {
     constructor(host,node) {
         this.node=node; this.host=host; this.tab="Choose a Workflow";
         this.shadow=host.attachShadow({mode:"open"});
-        for (const file of ["theme.css","layout.css","images.css"]) this.shadow.append(el("link",{rel:"stylesheet",href:new URL(file,import.meta.url).href}));
+        for (const file of ["theme.css","layout.css","images.css","roadmap.css"]) this.shadow.append(el("link",{rel:"stylesheet",href:new URL(file,import.meta.url).href}));
         this.root=el("div",{class:"foundry","data-theme":matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"});
         this.shadow.append(this.root);
         // OrbitControls receives pointerup at the shadow root. Let releases
@@ -58,7 +58,7 @@ export class FoundryShell {
         this.resourceBar=el("div",{class:"resources"},this.vram.element,this.ram.element,this.cpu.element,
             this.activity.element,el("div",{class:"model-residency"},this.unload,this.loadedLabel));
         this.nav=el("nav",{class:"tabs",role:"tablist","aria-label":"Foundry sections"});
-        this.tabs=["Choose a Workflow","Images","History","Integrations","About"];
+        this.tabs=["Choose a Workflow","Images","History","Integrations","About","Roadmap"];
         this.tabs.forEach((name,i)=>this.nav.append(button(name,()=>this.open(name),{class:i===2?"secondary-start":"",role:"tab","aria-selected":name===this.tab,tabindex:name===this.tab?0:-1})));
         this.nav.addEventListener("keydown",e=>{
             if(!["ArrowRight","ArrowLeft","Home","End"].includes(e.key))return;
@@ -126,7 +126,7 @@ export class FoundryShell {
         if(name==="Choose a Workflow"){this.content.replaceChildren(home(this));return;}
         this.content.replaceChildren(el("p",{class:"muted"},"Loading "+name.toLowerCase()+"…"));
         try {
-            const files={"About":"about","History":"library","Images":"images","Integrations":"integrations"};
+            const files={"About":"about","History":"library","Images":"images","Integrations":"integrations","Roadmap":"roadmap"};
             const module=await import("./views/"+files[name]+".js");
             if(sequence!==this.sequence)return;
             const view=await module.render(this,"mesh");
