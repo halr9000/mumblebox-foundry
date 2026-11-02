@@ -18,15 +18,18 @@ export async function request(path, data, options = {}) {
 }
 export const fileUrl = (id, file) => PREFIX + "/library/" + encodeURIComponent(id) + "/files/" + encodeURIComponent(file);
 export function pollResources(onStatus, onError) {
-    let disposed = false, timer, controller;
+    let disposed = false, timer, controller, failures=0;
     const run = async () => {
+        if(disposed)return;
         controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 8000);
+        let delay=1000;
         try {
             const data = await request("/asset-workshop/status", undefined, {signal:controller.signal});
+            failures=0;
             if (!disposed) onStatus(data);
-        } catch (error) { if (!disposed) onError(error); }
-        finally { clearTimeout(timeout); if (!disposed) timer = setTimeout(run, 3000); }
+        } catch (error) { delay=Math.min(10000,1000*2**++failures);if (!disposed) onError(error); }
+        finally { clearTimeout(timeout); if (!disposed) timer = setTimeout(run, delay); }
     };
     run();
     return () => { disposed = true; clearTimeout(timer); controller?.abort(); };

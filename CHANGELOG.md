@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-preview.9
+
+- Add selected-stage overall completion in the wizard, including texture, selected game bakes, quads, print preparation, package/ZIP and final cleanup. Node sampling resets no longer reset overall completion; percentages measure completed work stages, not predicted time.
+- Animate busy chaos stars with three accelerating/decelerating turns and a rest in the header, wizard and image creator. Settings offers Follow system, Spin and Pause so reduced-motion preferences can be respected or explicitly overridden.
+- Separate the LoRA selector, Add LoRA and Browse buttons with compact, consistent spacing.
+- Include isolated TRELLIS and Hi3D activity in model status. Distinguish loaded, CPU-offloaded and unknown residency; reject stale worker reports and remove them when workers exit.
+- Refresh system meters every second with non-overlapping requests, shared bounded hardware sampling and retry backoff. Use device-wide CUDA usage so isolated-worker VRAM is included.
+- Remove these five completed items from the public Roadmap. Preserve the existing geometry, texture, export defaults and model acquisition behavior.
+
 ## 0.1.0-preview.8
 
 - Complete the running-app update repair: resolve the owned startup script explicitly and stop the verified installation runtime before acquiring the update lock. Pinokio can close its terminal while the Python runtime is still alive; other installations and active generation are protected.

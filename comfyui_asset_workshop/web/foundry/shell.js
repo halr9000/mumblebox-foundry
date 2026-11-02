@@ -15,7 +15,8 @@ import {installTextClipboard} from "./clipboard.js";
 export class FoundryShell {
     constructor(host,node) {
         this.node=node; this.host=host; this.tab="Choose a Workflow";
-        this.shadow=host.attachShadow({mode:"open"});
+        this.shadow=host.shadowRoot||host.attachShadow({mode:"open"});
+        this.shadow.replaceChildren();
         for (const file of ["theme.css","layout.css","images.css","roadmap.css"]) this.shadow.append(el("link",{rel:"stylesheet",href:new URL(file,import.meta.url).href}));
         this.root=el("div",{class:"foundry","data-theme":matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"});
         this.shadow.append(this.root);
@@ -78,6 +79,7 @@ export class FoundryShell {
         try {
             this.data=await request("bootstrap");
             this.version.textContent="v"+this.data.version;
+            this.root.dataset.motion=this.data.preferences.busy_motion||"system";
             if(this.data.preferences.theme) await this.setTheme(this.data.preferences.theme,false);
             else await this.setTheme(this.root.dataset.theme,false);
             this.message("Local workspace · Image-to-3D workflow");

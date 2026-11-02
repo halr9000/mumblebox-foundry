@@ -45,8 +45,15 @@ function connection(shell,service,label) {
     return {element:section,clear:()=>{token.value="";}};
 }
 export function render(shell,{service}={}) {
+    const motion=el("select",{"aria-label":"Busy animations",onchange:async e=>{
+        try{shell.data.preferences=await request("preferences",{busy_motion:e.target.value},{method:"PATCH"});
+            shell.root.dataset.motion=shell.data.preferences.busy_motion;
+        }catch(error){shell.message(error.message,true);}
+    }},...[["system","Follow system motion preference"],["full","Spin, spin, spin, rest"],["paused","Pause animation"]].map(([value,label])=>
+        el("option",{value,selected:value===(shell.data.preferences.busy_motion||"system")},label)));
     const appearance=el("section",{class:"settings-section"},el("h3",{},"Appearance and language"),
         el("div",{class:"actions"},button("Light theme",()=>shell.setTheme("light")),button("Dark theme",()=>shell.setTheme("dark"))),
+        field("Busy animations",motion,"Applies to processing and downloads in the header and stage panels. Choose Spin to override reduced motion, or Pause for a still indicator."),
         hint("English is active. Korean, Japanese, Mandarin, Spanish, Portuguese and German are planned; translations are not installed yet."));
     const profile=el("select",{"aria-label":"Memory profile",onchange:async e=>{
         try{shell.data.preferences=await request("preferences",{profile:e.target.value},{method:"PATCH"});}

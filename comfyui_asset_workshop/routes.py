@@ -83,6 +83,21 @@ def record_resources(owner, report):
 
 
 RESOURCE_LIFECYCLE = None
+_METER_CACHE = (0, {})
+
+def meter_sample():
+    """One bounded hardware sample shared by all GUI clients for half a second."""
+    global _METER_CACHE
+    now=time.monotonic()
+    if now-_METER_CACHE[0]<.5:return _METER_CACHE[1]
+    ram=psutil.virtual_memory()
+    device=memory.get_torch_device()
+    free,total=torch.cuda.mem_get_info(device) if device.type=='cuda' else (0,0)
+    value={'sampled_at':time.time(),'cpu_percent':psutil.cpu_percent(interval=None),
+           'ram_total':ram.total,'ram_used':ram.total-ram.available,
+           'vram_total':int(total),'vram_used':int(total-free)}
+    _METER_CACHE=(now,value)
+    return value
 
 
 def resources():
@@ -156,18 +171,24 @@ def reconcile(asset):
 @endpoint
 async def status(request):
     from .civitai_routes import DOWNLOADS
-    ram = psutil.virtual_memory()
-    device = memory.get_torch_device()
-    total = int(memory.get_total_memory(device)) if device.type != "cpu" else 0
-    free = int(memory.get_free_memory(device)) if device.type != "cpu" else 0
+    from .pipeline_workers.activity import snapshot as worker_snapshot, host_residency
+    workers=worker_snapshot()
+    residencies=host_residency(list(memory.current_loaded_models))+workers
+    workflow_activity=[]
+    for name in ('image_to_3d','image_creation'):
+        owner=__import__(__package__+'.foundry.workflows.'+name+'.runs',fromlist=['ACTIVE']).ACTIVE
+        if owner:
+            for ident in list(owner.tasks):
+                run=(owner.runs if name=='image_to_3d' else owner.records).get(ident,{})
+                workflow_activity.append({'workflow':name,'stage':run.get('stage'), 'dependency':run.get('dependency')})
     library_path = Path(configuration()["root"])
     while not library_path.exists():
         library_path = library_path.parent
     disk = shutil.disk_usage(library_path)
     return web.json_response({
-        "cpu_percent": psutil.cpu_percent(interval=None),
-        "ram_total": ram.total, "ram_used": ram.total - ram.available,
-        "vram_total": total, "vram_used": total - free,
+        **meter_sample(),
+        "model_residency":residencies,
+        "workflow_activity":workflow_activity,
         "loaded_models": len(memory.current_loaded_models),
         "helper_loaded": description_helper.PROCESS is not None and description_helper.PROCESS.poll() is None,
         "running": queue().get_tasks_remaining() > 0 or any(__import__(__package__+".foundry.workflows."+name+".runs",fromlist=["busy"]).busy() for name in ('image_to_3d','image_creation')), "root": configuration()["root"],
@@ -183,7 +204,7 @@ async def status(request):
         "hardware": memory_policy.hardware_info(),
         "hugging_face": hf_auth.status(),
         "models_directory": str(models.MODEL_ROOT),
-    })
+    },headers={"Cache-Control":"no-store"})
 
 
 @ROUTES.post(PREFIX + "/hugging-face")

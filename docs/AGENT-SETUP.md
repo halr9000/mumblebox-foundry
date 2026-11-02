@@ -35,7 +35,7 @@ Repeat `--input-root` or use `--input-file` to authorize specific reference inpu
 - `foundry_import_reference`: imports an allowed reference without modifying its source.
 - `foundry_create_run` / `foundry_update_run`: configuration only.
 - `foundry_start`: turnaround, mesh, finish or rocket.
-- `foundry_run_status`: stage, progress, downloads, outputs and errors.
+- `foundry_run_status`: stage, progress, downloads, outputs and errors. The `progress` object lists selected stages, completed stages, the current stage and a fraction based on completed stages, not elapsed time. It includes packaging and final cleanup; only a completed run reaches 100%.
 - `foundry_cancel`: cancels the selected job while retaining completed checkpoints.
 - `foundry_show_run`: updates the already-open interface without taking OS focus.
 - `foundry_package`: finished package metadata and local download URL.

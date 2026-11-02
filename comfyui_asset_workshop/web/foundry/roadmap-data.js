@@ -4,17 +4,7 @@ export const roadmap = [
     {
         id: "interface", title: "GUI & usability", summary: "Clearer feedback and controls throughout the interface.",
         items: [
-            {title: "Animate the busy chaos star", description: "Use the spin, spin, spin, rest rhythm from the earlier interface: accelerate, decelerate and pause. Apply it to both the header and stage panels during processing and downloads."},
-            {title: "Tidy the image creation controls", description: "Separate the LoRA selector, Add LoRA and Browse models buttons so they do not touch or overlap. Keep spacing compact and consistent."},
             {title: "Keep improving the guided experience", description: "Review the interface and workflow wizards together: plain-language help, useful defaults, Advanced options and clear feedback, without unnecessary padding or repeated instructions."},
-        ],
-    },
-    {
-        id: "monitoring", title: "Monitoring & progress", summary: "Show what the entire job is doing, including its workers.",
-        items: [
-            {title: "Overall completion progress", description: "Show progress across the selected stages and outputs, including texturing, retopology, baking, exports and ZIP creation. Keep the current stage visible without making each new 0–100% cycle look like the end of the job."},
-            {title: "Accurate loaded-model status", description: "Include models in isolated Hi3D and TRELLIS workers, and distinguish loaded, offloaded and unknown states. Avoid reporting No models loaded while a worker is using one."},
-            {title: "More responsive system meters", description: "Refresh VRAM, RAM and CPU readings closer to real time with bounded polling. Drive busy and download indicators from actual activity."},
         ],
     },
     {

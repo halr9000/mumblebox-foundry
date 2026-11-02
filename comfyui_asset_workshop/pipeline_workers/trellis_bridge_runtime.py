@@ -86,16 +86,24 @@ def run_worker(command, log_path, check_interrupt):
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);OwnedWorker=module.OwnedWorker
     with log_path.open('w',encoding='utf-8') as log:
         owner=OwnedWorker(command,log);process=owner.process
+        monitored=any(str(part).endswith('trellis_texture_worker.py') for part in command)
+        key='trellis:'+str(process.pid)
+        if monitored:
+            from .activity import update, read_worker, remove
+            update(key,'TRELLIS.2')
         try:
             started=time.monotonic()
             while process.poll() is None:
                 check_interrupt()
+                if monitored:read_worker(key,'TRELLIS.2',log_path.with_name('model-residency.json'),process.pid)
                 if time.monotonic()-started>3600:raise TimeoutError('Isolated worker exceeded one hour')
                 time.sleep(.25)
         finally:
             try:
                 if process.poll() is None:owner.stop()
-            finally:owner.close()
+            finally:
+                owner.close()
+                if monitored:remove(key)
     if process.returncode:
         detail = log_path.read_text(encoding='utf-8', errors='replace')[-7000:]
         raise RuntimeError(f'TRELLIS.2 worker failed ({process.returncode}). Log: {log_path}\n{detail}')

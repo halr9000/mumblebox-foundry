@@ -33,3 +33,13 @@ test('meters reject missing and invalid totals rather than drawing an invented z
     assert.equal(behavior.utilization(undefined,16),null);
     assert.equal(behavior.utilization(0,0),null);
 });
+test('isolated workers, offloaded patchers and unknown loading are kept distinct',()=>{
+    assert.equal(behavior.loadedState({model_residency:[{name:'Hi3D',state:'loaded',device:'GPU / CPU offload'}]}).state,'loaded');
+    assert.equal(behavior.loadedState({model_residency:[{name:'TRELLIS.2',state:'offloaded',device:'CPU'}]}).state,'offloaded');
+    assert.equal(behavior.loadedState({model_residency:[{name:'TRELLIS.2',state:'unknown'}]}).state,'unknown');
+    assert.equal(behavior.loadedState({model_residency:[]}).state,'empty');
+});
+test('first-use preparations from either workflow drive actual busy activity',()=>{
+    const state=behavior.activityState({workflow_activity:[{workflow:'image_creation',dependency:{phase:'downloading',name:'Qwen',bytes:5,total:10}}]});
+    assert.equal(state.busy,true);assert.equal(state.fraction,.5);assert.match(state.label,/Downloading/);
+});

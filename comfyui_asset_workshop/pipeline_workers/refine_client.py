@@ -167,6 +167,9 @@ class Hi3DRefine:
         job=request(backend['url'],'/api/jobs',{'image':imageitem['id'],'mesh':meshitem['id'],'resolution':resolution,'steps':steps,'seed':seed,'offload':cpu_offload,'attention':attention})
         started=time.monotonic()
         jid=job['id'];pbar=ProgressBar(steps*({512:1,1024:2,1536:3}[resolution]))
+        from .activity import update as worker_update, remove as worker_remove
+        worker_key='hi3d:'+jid
+        worker_update(worker_key,'Hi3D')
         try:
             while True:
                 if time.monotonic()-started>3600:raise TimeoutError('Hi3D exceeded one hour')
@@ -175,12 +178,19 @@ class Hi3DRefine:
                 if j['state']=='succeeded':break
                 if j['state'] in {'failed','cancelled','interrupted'}:raise RuntimeError(j.get('message','Hi3D 未完成'))
                 event=j.get('event',{})
+                # The service emits these events only after model construction.
+                # CPU offload is reported explicitly; do not claim full GPU residency.
+                phase=event.get('stage',j.get('stage'))
+                if phase in {'conditioning','sampling','decoding','extracting','postprocessing','exporting'}:
+                    worker_update(worker_key,'Hi3D','loaded',device='CPU offload enabled' if cpu_offload else 'CUDA')
                 if event.get('stage')=='sampling' and 'step' in event and 'pass_index' in event:pbar.update_absolute(event['pass_index']*steps+event['step'])
                 time.sleep(.5)
         except BaseException:
             try:request(backend['url'],f'/api/jobs/{jid}/cancel',{})
             except Exception:pass
             raise
+        finally:
+            worker_remove(worker_key)
         result=request(backend['url'],f'/api/jobs/{jid}/files/refined.npz',raw=True)
         with np.load(io.BytesIO(result),allow_pickle=False) as data:output=mesh_value(data['vertices'].copy(),data['faces'].copy())
         return (output,json.dumps(j['report'],ensure_ascii=False),jid)

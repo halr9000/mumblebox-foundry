@@ -2,6 +2,7 @@ import {modelAccessError} from "../connection-help.js";
 import {el,button,hint,field,link} from '../dom.js';
 import {request} from '../services.js';
 import {referenceControls} from './references.js';
+import {workingStar} from '../activity.js';
 
 export function creator(c){
     const draft=c.draft,model=c.model(),busy=!!c.run?.active;
@@ -39,7 +40,7 @@ export function creator(c){
                 if(!loraSelect.value||draft.loras.some(l=>l.name===loraSelect.value))return;
                 if(draft.loras.length>=8){c.error='Choose up to eight LoRAs.';c.render();return;}
                 draft.loras.push({name:loraSelect.value,profile:draft.model,strength:1,strength_clip:1,trigger:''});c.remember();c.render();
-            })),...loraRows,button('Browse models and LoRAs',()=>c.shell.open('Integrations'))),
+            })),...loraRows,el('div',{class:'creator-browse'},button('Browse models and LoRAs',()=>c.shell.open('Integrations')))),
         el('details',{},el('summary',{},'Advanced generation settings'),el('div',{class:'creator-controls'},number('resolution','Image size (pixels)',64),number('steps','Steps'),number('cfg','Guidance',.1),number('seed','Seed · -1 for random')),
             hint('Recommended model defaults are loaded automatically. A pair keeps the same size; the back uses the next seed.'),
             draft.model.startsWith('sdxl')?field('Negative prompt · SDXL',el('textarea',{rows:2,value:draft.settings.negative_prompt||'',oninput:e=>{draft.settings.negative_prompt=e.target.value;c.remember();}})):null,
@@ -55,7 +56,7 @@ export function creator(c){
         ready&&!busy?button('Generate a new variation',()=>c.act(()=>c.generate('regenerate'))):null,
         busy?button('Cancel generation',()=>c.act(async()=>{c.run=await request('images/'+c.id+'/cancel',{});})):null,c.progressText),
         c.error?modelAccessError(c.shell,c.error):null,
-        busy?el('progress',{'aria-label':'Image generation in progress'}):null,
+        busy?el('div',{class:'creator-busy'},workingStar(),el('progress',{'aria-label':'Image generation in progress'})):null,
         el('div',{class:'creator-pair','data-paired':String(c.paired())},...frames),
         c.run?.pair_review?hint(c.run.pair_review):null,
         el('div',{class:'creator-finish actions'},button('Save & Create Another',()=>c.act(()=>c.save('another')),{disabled:!ready||busy}),

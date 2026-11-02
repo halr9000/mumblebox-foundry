@@ -7,6 +7,7 @@ import {referenceFilename,syncWizardGraph,syncWizardOutputs,wizardStateKey,clear
 import {initialState,copyRunConfiguration} from "./session.js";
 import {exportChoices,validateExports} from "./export-choices.js";
 import {FIRST_USE_MESSAGE} from "../activity-state.js";
+import {overallProgress} from "../overall-progress.js";
 import {inputPage,reviewPage,optionsPage,finishingPage,resultPage} from "./pages.js";
 const clone=value=>JSON.parse(JSON.stringify(value));
 const titles=["Your starting images","Review the four views","Mesh and refinement","Refined mesh and exports","Your asset package"];
@@ -15,7 +16,7 @@ const stepDescriptions=["References and image model","Review the turnaround","De
 const stageNames={turnaround:"Qwen Image 2.1 · Creating four views",geometry:"Pixal3D / TRELLIS.2 · Building the initial mesh",
  refinement:"Hi3D · Refining and cleaning the geometry",texture:"TRELLIS.2 · Texturing the finished geometry",
  balanced:"Baking the balanced game mesh",compact:"Baking the compact game mesh",quads:"QuadriFlow · Retopology, UVs and detail baking",
- print:"Preparing and measuring the print mesh",package:"Writing exports, README and ZIP"};
+ print:"Preparing and measuring the print mesh",package:"Writing exports, README and ZIP",cleanup:"Releasing models and temporary work"};
 export class Wizard {
     constructor(shell,{resume=false,runId=null}={}) {
         this.shell=shell;this.node=shell.node;this.page=1;this.disposed=false;this.previewDispose=null;
@@ -31,7 +32,8 @@ export class Wizard {
         this.progressHandler=e=>{
             if(!this.run?.active||e.detail?.prompt_id&&e.detail.prompt_id!==this.run.pending?.prompt_id)return;
             const value=e.detail?.value,max=e.detail?.max;
-            if(Number.isFinite(value)&&max>0&&this.sampleProgress)this.sampleProgress.textContent="Sampling "+value+" of "+max;
+            if(Number.isFinite(value)&&max>0&&this.sampleProgress)this.sampleProgress.textContent="Current step · "+value+" of "+max;
+            if(Number.isFinite(value)&&max>0)this.updateOverall(value/max);
         };
         api.addEventListener("progress",this.progressHandler);
     }
@@ -79,6 +81,7 @@ export class Wizard {
                 const changed=JSON.stringify([current.status,current.active,current.stage,current.pending?.prompt_id,current.events?.at(-1),current.dependency?.name,current.dependency?.phase])!==
                     JSON.stringify([this.run?.status,this.run?.active,this.run?.stage,this.run?.pending?.prompt_id,this.run?.events?.at(-1),this.run?.dependency?.name,this.run?.dependency?.phase]);
                 this.run=current;
+                this.updateOverall();
                 if(changed){this.applyRun();this.render();}
                 if(this.elapsed&&current.pending?.started){
                     const seconds=Math.max(0,Math.floor(Date.now()/1000-current.pending.started));
@@ -155,10 +158,28 @@ export class Wizard {
         if(!this.run?.active)return null;
         this.sampleProgress=el("span",{class:"muted"});
         this.elapsed=el("span",{class:"muted"});
+        this.overallText=el("strong",{class:"overall-label"});
+        this.overallMeter=el("progress",{max:1,"aria-label":"Overall completion"});
+        this.overallCount=el("small",{class:"muted"});
+        this.updateOverall();
+        const p=this.run.progress;
+        const stages=p?el("details",{class:"selected-stages"},el("summary",{},"Selected stages"),
+            el("ol",{},...p.stages.map(stage=>el("li",{'data-state':p.completed.includes(stage)?'complete':p.current===stage?'current':'remaining'},
+                (p.completed.includes(stage)?"Complete · ":p.current===stage?"Current · ":"Remaining · ")+(stageNames[stage]||stage))))):null;
         return el("div",{class:"wizard-busy",role:"status","aria-live":"polite"},
             el("img",{src:new URL("../../assets/foundry-chaos-star.svg",import.meta.url).href,alt:"",class:"working-star"}),
-            el("div",{},el("strong",{},this.run.dependency?"Preparing required models":this.run.stage==="turnaround"?(this.run.turnaround?.name||"Image model")+" · Creating four views":stageNames[this.run.stage]||"Preparing the next stage"),this.sampleProgress,this.elapsed,
-                hint(this.run.dependency?FIRST_USE_MESSAGE:this.run.stage==="refinement"?"Refinement can take several minutes. The saved initial mesh is retained.":"Your completed stages are saved as the workflow progresses.")));
+            el("div",{class:"stage-progress"},this.overallText,this.overallMeter,this.overallCount,
+                el("strong",{},this.run.dependency?"Preparing required models":this.run.stage==="turnaround"?(this.run.turnaround?.name||"Image model")+" · Creating four views":stageNames[this.run.progress?.current||this.run.stage]||"Preparing the next stage"),this.sampleProgress,this.elapsed,
+                hint(this.run.dependency?FIRST_USE_MESSAGE:this.run.stage==="refinement"?"Refinement can take several minutes. The saved initial mesh is retained.":"Your completed stages are saved as the workflow progresses."),stages));
+    }
+    updateOverall(sample=0){
+        const p=this.run?.progress;if(!p||!this.overallMeter)return;
+        const key=this.run.id+":"+this.run.request_id;
+        if(this.overallKey!==key){this.overallKey=key;this.overallValue=0;}
+        this.overallValue=overallProgress(p,sample,this.overallValue,this.run.status==="complete"&&p.fraction===1);
+        this.overallMeter.value=this.overallValue;
+        this.overallText.textContent="Overall completion · "+Math.floor(this.overallValue*100)+"%";
+        this.overallCount.textContent=p.completed.length+" of "+p.total+" selected stages complete · measures work, not time";
     }
     render(){
         if(this.disposed)return;

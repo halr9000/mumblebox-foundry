@@ -1,4 +1,15 @@
-# Preview 0.1.0-preview.8 validation
+# Preview 0.1.0-preview.9 validation
+
+Validated on 2026-11-02 in the existing Comfy Desktop workflow. This pass changes feedback and monitoring, not generation settings, geometry, textures or export contents.
+
+- The installed interface reports preview.9. Both header and wizard stars have running 4.8-second animations when Spin is selected. The actual Settings select was changed to Pause and back to Spin; the stored preference changed correctly. System motion remains the default for other users.
+- Opened the real image creator and LoRA disclosure. Selector/Add and Browse controls have separate measured gaps; existing drafts and LoRA selections were preserved.
+- A rendered stage-panel fixture verified selected-stage count, an overall percentage, and monotonic progress after a node counter resets. Contract tests cover print-only selection, all optional outputs, legacy records, recovery and cleanup failures. No full asset was regenerated for this feedback pass.
+- The real isolated-worker bridge was exercised with a tiny local PyTorch module moving between CPU and CUDA, without downloaded weights. It reported offloaded and loaded states, then removed the worker on exit. Tests reject stale/wrong-process reports and cover Windows venv interpreter children. Hi3D reporting uses the service's post-load events and labels its CPU-offload policy; it does not claim per-layer instantaneous device measurements from that service.
+- The live system endpoint produced distinct samples approximately one second apart, with changing CPU and RAM readings. Polling tests cover non-overlap, offline backoff and disposal. Hardware sampling is shared for half a second across clients and reads device-wide CUDA usage.
+- The five completed items are removed from the public Roadmap and recorded in CHANGELOG.md. The agent run-status response includes the same selected-stage progress object used by the wizard.
+
+## Retained preview.8 validation
 
 Preview.8 corrects the owned-process shutdown found during the actual Pinokio update run. The installed preview.6 detected the preview.7 GitHub release; the repaired updater then downloaded and checksum-verified that archive and ran the installed maintenance path. Tests additionally cover rejecting unrelated PIDs and waiting for this installation's runtime to exit. This is update-path validation, not another generation-quality test.
 

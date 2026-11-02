@@ -16,6 +16,7 @@ from .definition import DEFAULT_SELECTION, VERSION, resolve_settings
 from .prompts import bind_references
 from .graph import compile_stage, STAGE_KEYS, DEPENDENCIES
 from .turnaround import model_spec
+from .progress import snapshot as progress_snapshot
 from ...artifacts import digest, owned_path
 
 ACTIVE = None
@@ -146,6 +147,7 @@ class WizardRuns:
             result.setdefault("previews",{})["print"]=view_url({"filename":path.name,"subfolder":relative.parent.as_posix(),"type":"output"})
         result["completed"]=list(run["stages"])
         result["active"]=run["id"] in self.tasks
+        result["progress"]=progress_snapshot(run)
         if run.get("dependency"):
             from .readiness import download_progress
             result["dependency"]={**run["dependency"],**download_progress(run["id"])}

@@ -11,6 +11,7 @@ ROOT = Path(__file__).parent
 
 def main():
     request = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+    request_path = Path(sys.argv[1])
     probe_only = '--probe' in sys.argv[2:]
     sys.argv = [sys.argv[0]]
     core = Path(request['comfy_core'])
@@ -25,6 +26,7 @@ def main():
     from PIL import Image
     from scipy.spatial import cKDTree
     from trellis_bridge_runtime import mesh_frame, restore_vertices, texture_reference_rgb
+    from worker_telemetry import monitor
 
     folder_paths.models_dir = request['trellis_models']
     repo = Path(request['trellis_repo'])
@@ -57,6 +59,7 @@ def main():
     pipeline = Trellis2ImageTo3DPipeline.from_pretrained(str(model), keep_models_loaded=False)
     pipeline.low_vram = True
     pipeline.cuda()
+    telemetry = monitor(pipeline, request_path)
 
     node = pack.NODE_CLASS_MAPPINGS['Trellis2MeshTexturing']()
     params = {}
