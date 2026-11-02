@@ -11,8 +11,7 @@ from . import VERSION
 
 REPOSITORY = "https://github.com/mumblebox-gpt/mumblebox-foundry"
 RELEASES_API = "https://api.github.com/repos/mumblebox-gpt/mumblebox-foundry/releases?per_page=20"
-AUTOMATIC_INTERVAL = 24 * 60 * 60
-MANUAL_INTERVAL = 60
+AUTOMATIC_INTERVAL = 5 * 60
 MAX_RESPONSE = 1024 * 1024
 
 
@@ -97,9 +96,8 @@ class ReleaseUpdates:
             if not manual and not self.preferences.read()["auto_check_updates"]:
                 return {**self.public(saved), "state": "disabled", "message": "Automatic update checks are off."}
             now = self.clock()
-            interval = MANUAL_INTERVAL if manual else AUTOMATIC_INTERVAL
             checked_at = saved.get("checked_at")
-            if now < saved.get("retry_at", 0) or (checked_at is not None and now - checked_at < interval):
+            if now < saved.get("retry_at", 0) or (not manual and checked_at is not None and now - checked_at < AUTOMATIC_INTERVAL):
                 return self.public(saved)
             result = {**saved, "current": self.current, "checked_at": now, "retry_at": 0}
             try:

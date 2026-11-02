@@ -10,6 +10,7 @@ import {showWorkflow} from "./graph-adapter.js";
 import {api} from "/scripts/api.js";
 import {app} from "/scripts/app.js";
 import {launchMessage} from "./app-mode.js";
+import {installTextClipboard} from "./clipboard.js";
 
 export class FoundryShell {
     constructor(host,node) {
@@ -18,6 +19,7 @@ export class FoundryShell {
         for (const file of ["theme.css","layout.css","images.css","roadmap.css"]) this.shadow.append(el("link",{rel:"stylesheet",href:new URL(file,import.meta.url).href}));
         this.root=el("div",{class:"foundry","data-theme":matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"});
         this.shadow.append(this.root);
+        this.stopTextClipboard=installTextClipboard(this.root);
         // OrbitControls receives pointerup at the shadow root. Let releases
         // reach it; swallowing them leaves the viewer stuck in a drag.
         for(const event of ["pointerdown","click","dblclick","wheel","keydown","contextmenu"])
@@ -160,5 +162,5 @@ export class FoundryShell {
         try{const module=await import("./views/settings.js");return module.render(this,options);}
         catch(error){this.message(error.message,true);}
     }
-    dispose() {this.updates.dispose();api.removeEventListener("mumblebox-foundry-run",this.agentRunHandler);api.removeEventListener('mumblebox-foundry-image',this.agentImageHandler);this.stopPolling?.();this.viewDispose?.();this.imageCreator?.dispose();this.activeDialog?.close();this.root.remove();this.sequence++;}
+    dispose() {this.stopTextClipboard?.();this.updates.dispose();api.removeEventListener("mumblebox-foundry-run",this.agentRunHandler);api.removeEventListener('mumblebox-foundry-image',this.agentImageHandler);this.stopPolling?.();this.viewDispose?.();this.imageCreator?.dispose();this.activeDialog?.close();this.root.remove();this.sequence++;}
 }

@@ -49,6 +49,13 @@ class UpdatesTests(unittest.TestCase):
         self.assertEqual(service.check(manual=True)['state'],'available')
         self.assertEqual(self.calls[-1]['If-None-Match'],'tag-a')
 
+    def test_manual_check_sees_a_new_release_without_waiting_for_startup_cache(self):
+        service=self.service();service.check()
+        self.response=(200,[release('v0.1.0-preview.4',True)],{})
+        result=service.check(manual=True)
+        self.assertEqual(result['latest'],'0.1.0-preview.4')
+        self.assertEqual(len(self.calls),2)
+
     def test_rate_limit_and_unavailable_never_claim_up_to_date(self):
         service=self.service();self.response=(403,{}, {'Retry-After':'120'})
         self.assertEqual(service.check(manual=True)['state'],'unavailable')

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-preview.7
+
+- Added the Roadmap tab after About, organized by interface, monitoring, workflow improvements, upcoming workflows, model evaluations and integration.
+- Fixed text copying and pasting inside the Foundry GUI and wizard without interfering with ComfyUI graph clipboard operations.
+- Keep Pinokio's Update action visible while Foundry is running. Check for active generation before stopping, apply the published update and restart Foundry.
+- Make manual version checks request fresh GitHub release information while respecting server rate limits. Startup checks use a five-minute cache and failures remain visible in Settings.
+- Clarified the distinction between a source push and a published version, and how to apply updates in Pinokio or standalone ComfyUI.
+
 ## 0.1.0-preview.6
 
 - Corrected corrupted punctuation in image-creation labels and workflow progress text.

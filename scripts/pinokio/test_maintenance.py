@@ -9,6 +9,15 @@ from bootstrap import Layout
 
 
 class MaintenanceTests(unittest.TestCase):
+    def test_running_or_queued_jobs_prevent_the_update_stop(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'.pinokio').mkdir()
+            (root/'.pinokio'/'runtime.json').write_text('{"comfy_url":"http://127.0.0.1:12345"}')
+            for status,queue in [({'running':True},{}),({}, {'queue_pending':[[1]]}),({}, {'queue_running':[[1]]})]:
+                with self.assertRaisesRegex(ValueError,'generation is active or queued'):
+                    maintenance.require_idle(root,read=lambda path:status if path.endswith('status') else queue)
+            maintenance.require_idle(root,read=lambda path:{})
+
     def test_bundle_rejects_tampering_and_unlisted_or_user_paths(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);file=root/'README.md';file.write_text('release')

@@ -24,7 +24,8 @@ Software comes from its published repositories and package hosts. Model weights 
 
 - **Stop:** use Pinokio's stop control for the running startup script. It stops this installation's owned services. Cancel an active generation first if you want to retain a clean stage checkpoint.
 - **Restart:** start Foundry again and select **Open Foundry**. Saved assets, settings, models and history remain in this installation.
-- **Update:** stop the app, then select **Update**. It resolves a published GitHub release, verifies its archive inventory/checksums and installs its pinned software. It refuses to overwrite modified launcher source. Pushing to GitHub does not automatically replace software on users' computers.
+- **Update:** select **Update** in the left sidebar, including while Foundry is running. It first checks that no generation is active or queued, stops Foundry, verifies the published GitHub release and installs its pinned software, then restarts. It refuses to overwrite modified launcher source. Saved assets, models and settings are retained.
+- **Version checks:** Foundry checks published GitHub versions on startup with a five-minute cache. **Settings → Check for updates** requests a fresh result. An available version displays an update notice. Ordinary source commits become downloadable updates when a release is published; a source push alone is not a release.
 - **Repair software:** stop the app and select **Repair software** to rerun dependency setup and reinstall the extension. It retains user assets, downloaded models and settings; it is not a data reset.
 
 Updates save a checkpoint of the previous extension and private configuration. If a staged update fails, those files are restored and startup asks for Repair. Dependency changes are not promised to roll back automatically; do not describe that checkpoint as a full environment snapshot.

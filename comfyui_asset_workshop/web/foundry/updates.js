@@ -11,7 +11,9 @@ export class UpdateChecks {
     }
     async startup() {
         if(this.shell.data?.preferences.auto_check_updates===false)return;
-        try {await this.check(false);}catch {/* Startup failure stays quiet; Settings exposes it. */}
+        try {await this.check(false);}catch(error){
+            this.result={state:"unavailable",message:error.message};this.notify();
+        }
     }
     async check(manual=true) {
         if(this.pending)return this.pending;
@@ -36,7 +38,7 @@ export class UpdateChecks {
         const actions=el("div",{class:"actions"},link("Release notes on GitHub",result.release_url));
         if(result.download_url)actions.prepend(link("Download update",result.download_url));
         dialog(this.shell,"Foundry "+result.latest,el("div",{},
-            hint("This download includes the workflow and its matching custom nodes. Install it when your current work is finished; this check does not change your installation."),
+            hint("In Pinokio, choose Update in the left sidebar to install and restart Foundry. For standalone ComfyUI, download the archive and follow INSTALL.md. Saved assets, models and settings are preserved."),
             actions,el("pre",{class:"release-notes"},result.notes||"See GitHub for release notes.")));
     }
     settings() {
@@ -65,7 +67,7 @@ export class UpdateChecks {
         const element=el("section",{class:"settings-section update-settings"},el("h3",{},"Updates"),
             hint("Installed version: "+shell.data.version),
             el("label",{class:"choice"},automatic,"Check for updates on startup"),
-            hint("Checks public GitHub releases at most once a day. No images or project information are sent. Updates are downloaded only when you choose."),
+            hint("Checks published GitHub versions on startup, with a five-minute cache. Check for updates requests a fresh result. Source-code pushes appear here when published as a release. No images or project information are sent."),
             el("div",{class:"actions"},check),status,notes);
         this.listeners.add(draw);draw();
         request("updates/status").then(result=>{if(element.isConnected&&!this.pending){this.result=result;draw();}}).catch(error=>{if(element.isConnected)status.textContent=error.message;});

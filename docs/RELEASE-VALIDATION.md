@@ -1,4 +1,6 @@
-# Preview 0.1.0-preview.6 validation
+# Preview 0.1.0-preview.7 validation
+
+Preview.7 adds the categorized Roadmap tab, repairs text clipboard handling and keeps Pinokio Update accessible while running. Targeted checks cover clipboard ownership/native editing, running-menu visibility, the idle guard, update stop/install/restart ordering and fresh manual release checks. The source and installed ComfyUI clipboard path were exercised with Ctrl+C/Ctrl+V. No new asset generation or category-quality qualification is claimed for this release. Earlier pipeline evidence below remains from prior previews.
 
 Validated on 2026-11-02 on Windows/NVIDIA. This release adds the Pinokio installer and embedded Foundry interface, and repairs first-use model preparation and isolated texture-worker dependencies. The checks below distinguish actual generation from automated contract checks.
 

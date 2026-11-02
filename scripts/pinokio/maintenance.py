@@ -12,11 +12,29 @@ import subprocess
 import sys
 import uuid
 import zipfile
+from urllib.request import urlopen
 from bootstrap import Layout, atomic_json, capture, download, extract_checked, install, run
 from runtime import InstallationLock
 
 
 REPOSITORY='https://github.com/mumblebox-gpt/mumblebox-foundry'
+
+
+def require_idle(root,read=None):
+    """Check both Foundry jobs and the Comfy queue before stopping this installation."""
+    runtime=Path(root)/'.pinokio'/'runtime.json'
+    if not runtime.exists():return
+    base=json.loads(runtime.read_text(encoding='utf-8'))['comfy_url']
+    if not re.fullmatch(r'http://127\.0\.0\.1:[0-9]+',base):
+        raise ValueError('Invalid local Foundry service address.')
+    def request(path):
+        with urlopen(base+path,timeout=5) as response:
+            return json.loads(response.read(1024*1024))
+    read=read or request
+    status=read('/asset-workshop/status');queue=read('/queue')
+    if status.get('running') or queue.get('queue_running') or queue.get('queue_pending'):
+        raise ValueError('A generation is active or queued. Finish or cancel it before updating. Foundry was not stopped.')
+    print('Foundry is idle; it can be stopped safely for the update.',flush=True)
 
 
 def require_clean_checkout(root):
@@ -136,6 +154,8 @@ def apply_staged(layout,staged,tag,old_commit,installer=None):
 
 
 def maintain(root,action,tag=None):
+    if action=='check-idle':
+        require_idle(root);return
     layout=Layout(root)
     with InstallationLock(layout.state/'operation.lock'):
         if action=='repair':
@@ -162,7 +182,7 @@ def maintain(root,action,tag=None):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=('update','repair'))
+    parser.add_argument('action',choices=('update','repair','check-idle'))
     parser.add_argument('--root',type=Path,default=Path(__file__).resolve().parents[2])
     parser.add_argument('--release-tag')
     args=parser.parse_args()

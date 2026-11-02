@@ -16,7 +16,9 @@ module.exports = {
       const workspace=runtime?.url?new URL('/mumblebox-foundry/',runtime.url):null;
       if(workspace?.hostname==='127.0.0.1')workspace.hostname='localhost';
       return [...(workspace?[{default:true,text:"Open Foundry",icon:"fa-solid fa-cubes",href:workspace.href}]:[]),
-        {default:!runtime?.url,text:"Startup logs",icon:"fa-solid fa-terminal",href:"start.js"}];
+        {default:!runtime?.url,text:"Startup logs",icon:"fa-solid fa-terminal",href:"start.js"},
+        {text:"Update",icon:"fa-solid fa-arrows-rotate",href:"update.js",
+          confirm:"Update Foundry to the latest published version? Foundry will stop and restart. Saved assets, models and settings are preserved. Active generation must finish first."}];
     }
     return [{default:true,text:"Start Foundry",icon:"fa-solid fa-play",href:"start.js"},
       {text:"Update",icon:"fa-solid fa-arrows-rotate",href:"update.js"},
