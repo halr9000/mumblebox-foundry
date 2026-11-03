@@ -1,3 +1,7 @@
+# Unreleased installer repair
+
+On 2026-11-03, a Windows Pinokio installation resumed after the Blender host returned HTTP 403 and the HairDeck `iopath` build failed under the shell's standard-library distutils setting. The mirror archive passed the pinned SHA-256 check, Blender 5.2.2 started, HairDeck's real entry points imported, and the installer completed its host, finishing, texture-worker and MCP import probes. Previously completed installation steps were reused. This was a resumed installation, not a fresh-machine install or a generation test.
+
 # Preview 0.1.0-preview.10 validation
 
 Validated on 2026-11-02. HairDeck adds a separate five-node workflow in two colored groups, its own six-page wizard, saved variations, fitting/material controls, static GLB, spring-bone VRM and optional motion MP4. Existing generation workflows retain their owners. [HairDeck implementation and limits](HAIR-WORKFLOW.md) records the pinned dependencies, runtime, public model acquisition and output evidence.

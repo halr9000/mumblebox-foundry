@@ -31,7 +31,11 @@ def install(core,python,source=ROOT):
     constraints=cache.parent/'hair-host-constraints.txt'
     torch_version=subprocess.check_output([str(python),'-c','import torch; print(torch.__version__)'],text=True).strip()
     constraints.write_text('torch=='+torch_version+'\n',encoding='utf-8')
-    run(['uv','pip','install','--python',python,'--constraint',constraints.name,'-r',source/'requirements-hair-windows.txt'],cwd=constraints.parent)
+    # Pinokio's conda shell can force the removed stdlib distutils on Python 3.12+.
+    # Use setuptools' bundled implementation for isolated package builds.
+    build_env=os.environ.copy()
+    build_env['SETUPTOOLS_USE_DISTUTILS']='local'
+    run(['uv','pip','install','--python',python,'--constraint',constraints.name,'-r',source/'requirements-hair-windows.txt'],cwd=constraints.parent,env=build_env)
     target=core/'custom_nodes/ComfyUI-HairDeck';target.mkdir(parents=True,exist_ok=True)
     from datetime import datetime,timezone
     backup=core/'user/mumblebox-foundry/install-backups'/('hair-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ'))

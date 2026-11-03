@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Download the pinned Blender archive from a Blender mirror when the primary download host challenges automated requests. The existing SHA-256 verification remains in place.
+- Use setuptools' bundled distutils when building HairDeck dependencies in environments that force the removed Python standard-library implementation.
+
 ## 0.1.0-preview.10
 
 - Add **Create Rigged Hair with HairDeck**, a separately grouped workflow with its own artwork and six-page wizard. Existing image and image-to-3D workflows stay independent.
