@@ -6,6 +6,21 @@ from unittest.mock import patch
 import bootstrap
 
 class InstallationTests(unittest.TestCase):
+    def test_download_identifies_client_and_verifies_checksum(self):
+        import hashlib, io
+        data=b'archive contents'
+        class Response(io.BytesIO):
+            headers={'Content-Length':str(len(data))}
+        with tempfile.TemporaryDirectory() as directory, patch.object(bootstrap.urllib.request,'urlopen',side_effect=lambda *args,**kwargs:Response(data)) as open_url:
+            path=Path(directory)/'archive.zip'
+            bootstrap.download('https://example.invalid/archive.zip',path,hashlib.sha256(data).hexdigest())
+            self.assertIn('Mumblebox-Foundry',open_url.call_args.args[0].get_header('User-agent'))
+            self.assertEqual(path.read_bytes(),data)
+            path.unlink()
+            with self.assertRaisesRegex(ValueError,'checksum'):
+                bootstrap.download('https://example.invalid/archive.zip',path,'0'*64)
+            self.assertFalse(path.exists())
+
     def test_managed_python_ignores_conflicting_pinokio_preference(self):
         with patch.dict(bootstrap.os.environ,{'UV_PYTHON_PREFERENCE':'only-system'}), patch.object(bootstrap,'capture',return_value='python310') as capture:
             self.assertEqual(bootstrap.managed_python('uv','3.10'),'python310')

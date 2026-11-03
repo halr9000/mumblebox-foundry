@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Download the pinned Blender archive from a Blender mirror when the primary download host challenges automated requests. The existing SHA-256 verification remains in place.
+- Download the pinned Blender archive through Blender's mirror service with an identifiable application user agent. The existing SHA-256 verification remains in place.
 - Use setuptools' bundled distutils when building HairDeck dependencies in environments that force the removed Python standard-library implementation.
 
 ## 0.1.0-preview.10
